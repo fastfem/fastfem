@@ -59,7 +59,7 @@ readme = "README.md"
 requires-python = '>=3.12'
 # The package depends on the packages below. They will be installed automatically when
 # the package is installed by users.
-dependencies = ["jax==0.4.33", "matplotlib==3.9.2", "gmsh==4.13.1"]
+dependencies = ["jax==0.4.35", "matplotlib==3.9.2", "gmsh==4.13.1"]
 classifiers = [
     "Intended Audience :: Science/Research",
     "Intended Audience :: Education",
@@ -140,6 +140,18 @@ build = "mkdocs build --clean --strict" # hatch run docs:build
 # Start the development server for the documentation with `mkdocs`:
 serve = "mkdocs serve" # hatch run docs:serve
 
+[tool.hatch.envs.tests]
+# Dependencies to be installed in the `tests` virtual environment.
+dependencies = [
+    "pytest==8.3.2", # to run the tests
+]
+path = ".venv-tests"
+
+[tool.hatch.envs.tests.scripts]
+# Run the tests:
+run = "pytest" # hatch run tests:run  
+# Run the tests and generate the coverage report as HTML:
+run-and-report = "coverage run -m pytest && coverage report && coverage html --show-contexts" # hatch run tests:coverage
 
 # ======================================================================================
 # Virtual Environments Above ===========================================================
