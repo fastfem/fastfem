@@ -1,4 +1,4 @@
-# Theory
+# __Theory__
 
 ## Introduction
 
