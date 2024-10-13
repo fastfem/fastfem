@@ -98,12 +98,13 @@ Changelog = 'https://sinatay.github.io/fastfem/changelog'
 [tool.hatch.envs.default]
 # Dependencies to be installed in the `default` virtual environment.
 dependencies = [
-    "ruff",          # to lint the code
-    "black",         # to format the code
-    "ipython",       # for ipython shell
-    "isort",         # to sort the imports  
-    "pyright",       # to check the types
-    "pytest==8.3.2", # to run the tests
+    "ruff",     # to lint the code
+    "black",    # to format the code
+    "ipython",  # for ipython shell
+    "isort",    # to sort the imports  
+    "pyright",  # to check the types
+    "pytest",   # to run the tests
+    "coverage", # to measure the test coverage
 ]
 path = ".venv"
 [tool.hatch.envs.default.scripts]
