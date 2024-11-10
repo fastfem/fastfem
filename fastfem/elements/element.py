@@ -336,7 +336,6 @@ class Element2D(abc.ABC):
         self,
         pos_matrix: FieldType,
         field: FieldType,
-        is_field_upper_index: bool,
         indices: colltypes.Sequence[ArrayLike] | None = None,
         jacobian_scale: FieldType = FieldType(tuple(), tuple(), 1),
     ) -> NDArray:
@@ -344,15 +343,14 @@ class Element2D(abc.ABC):
         Computes the integral $\\int \\alpha \\nabla \\phi_i \\cdot f ~ dV$
         for a field $f$, on this element. The dot product takes the last axis of
         `field`, which must have size equal to the domain dimension.
+        The basis for the vector field is assumed to be in global coordinates,
+        which is assumed to be over the kronecker dot product.
 
         Args:
             pos_matrix (Field): an array representing the positions of the
                     element nodes. This is of the shape `(basis_shape,...,2)`
             field (Field): an array of shape (*basis_shape,...,*fieldshape)
                 representing the field to be interpolated.
-            is_field_upper_index (bool): True if the last axis of field is treated as
-                an upper (contravariant / vector) index. False if it is a lower
-                (covariant / covector) index.
             indices (colltypes.Sequence[ArrayLike] | None, optional): Indices of the basis
                     functions to integrate against, or None if the integral should be
                     computed against every basis field. Defaults to None.
@@ -402,7 +400,6 @@ class Element2D(abc.ABC):
         return self.integrate_grad_basis_dot_field(
             pos_matrix,
             self.compute_field_gradient(field, pos_matrix),
-            False,
             indices,
             jacobian_scale,
         )

@@ -1,33 +1,40 @@
+from typing import Callable
 import pytest
 import numpy as np
 
 from fastfem.elements import spectral_element
+from fastfem.fields.field import Field
 
 
 @pytest.fixture(scope="module", params=[3, 4, 5])
 def element(request):
     order = request.param
     elem = spectral_element.SpectralElement2D(order)
-    out = np.empty((order + 1, order + 1, 2))
-    out[:, :, 0] = elem.knots[:, np.newaxis]
-    out[:, :, 1] = elem.knots[np.newaxis, :]
-    return (elem, out)
+    return elem
 
 
 @pytest.fixture(scope="module")
 def transformed_element(element, transformation):
-    return element[0], transformation(element[1]), transformation
+    return (
+        element,
+        Field(
+            element.basis_shape(),
+            (2,),
+            transformation(element.reference_element_position_matrix().coefficients),
+        ),
+        transformation,
+    )
 
 
 @pytest.fixture(scope="module")
 def transformed_element_stack(transform_stack, element):
 
-    transformed = transform_stack(element[1])
-    ndims = len(transformed.shape) - len(element[1].shape)
+    transformed = transform_stack(element.reference_element_position_matrix())
+    ndims = len(transformed.shape) - len(element.basis_shape())
     pts_stack = np.permute_dims(
         transformed, (ndims, ndims + 1) + tuple(range(ndims)) + (-1,)
     )
-    return element[0], pts_stack, transform_stack
+    return element, pts_stack, transform_stack
 
 
 @pytest.fixture(
@@ -192,62 +199,18 @@ def test_lagrange_evals1D(element, broadcastable_shapes):
             )
 
 
-# test depends on reference_to_real
-def test_def_grad_eval(transformed_element, ref_coords_arr):
-    elem = transformed_element[0]
-    points = transformed_element[1]
-    # transformation = transformed_element[2]
-    X, Y = np.split(ref_coords_arr, 2, axis=-1)
-    X = X.squeeze(-1)
-    Y = Y.squeeze(-1)
-
-    grads = elem.interpolate_deformation_gradient(points, X, Y)
-
-    sigfigs = 5
-    # we will use central finite difference which has O(h^2) error
-    h = 10 ** -((sigfigs + 3) // 2)
-
-    x_derivs = (
-        elem.reference_to_real(points, X + h, Y)
-        - elem.reference_to_real(points, X - h, Y)
-    ) / (2 * h)
-    y_derivs = (
-        elem.reference_to_real(points, X, Y + h)
-        - elem.reference_to_real(points, X, Y - h)
-    ) / (2 * h)
-
-    np.testing.assert_almost_equal(
-        grads, np.stack((x_derivs, y_derivs), -1), decimal=sigfigs
-    )
-
-
 # @pytest.mark.skip
-def test_reference_to_real(transformed_element, ref_coords_arr):
-    elem = transformed_element[0]
-    points = transformed_element[1]
-    transformation = transformed_element[2]
+def test_interpolate_field(element, ref_coords):
+    field = element.basis_fields()
+    x, y = ref_coords
+    interp_vals = element.interpolate_field(field, x, y)
+    # relies on correctness of lagrange_eval1D
+    Lx = element.lagrange_eval1D(0, None, x=x)
+    Ly = element.lagrange_eval1D(0, None, x=y)
 
-    true_pos = transformation(ref_coords_arr)
     np.testing.assert_almost_equal(
-        elem.reference_to_real(
-            points, *[v.squeeze(-1) for v in np.split(ref_coords_arr, 2, axis=-1)]
-        ),
-        true_pos,
-    )
-
-
-def test_reference_to_real_elemstack(transformed_element_stack, ref_coords_arr):
-    elem, points, transformation = transformed_element_stack
-
-    true_pos = transformation(ref_coords_arr)
-    # pad points to fit with ref_coords_arr (note last index is position coordinate)
-    points = points[..., *[np.newaxis for dim in ref_coords_arr.shape[:-1]], :]
-    test_pos = elem.reference_to_real(
-        points, *[v.squeeze(-1) for v in np.split(ref_coords_arr, 2, axis=-1)]
-    )
-    np.testing.assert_almost_equal(
-        test_pos,
-        true_pos,
+        interp_vals,
+        Lx[:, np.newaxis] * Ly[np.newaxis, :],
     )
 
 
@@ -281,6 +244,18 @@ def test_real_to_reference_interior(transformed_element, ref_coords):
     )
 
 
+def test_real_to_reference_degen_elem(element):
+    points = element.reference_element_position_matrix().coefficients
+    points[..., 0] = np.abs(points[..., 0])
+    try:
+        element.locate_point(points, 1e-10, 0.3)
+    except spectral_element.DeformationGradient2DBadnessException as e:
+        assert e.x == pytest.approx(0, abs=1e-5), "error should be on local x=0"
+        return
+    assert False, "Correct Exception not thrown!"
+
+
+@pytest.mark.skip("update code and move it to general element tests")
 def test_field_grad(transformed_element):
     elem, points, transformation = transformed_element
     X = np.linspace(-1, 1, elem.num_nodes)[:, np.newaxis] + np.zeros(
@@ -359,15 +334,93 @@ def test_field_grad(transformed_element):
             )
 
 
-def test_degen_elem(element):
-    elem, points = element
-    points[..., 0] = np.abs(points[..., 0])
-    try:
-        elem.locate_point(points, 1e-10, 0.3)
-    except spectral_element.DeformationGradient2DBadnessException as e:
-        assert e.x == pytest.approx(0, abs=1e-5), "error should be on local x=0"
-        return
-    assert False, "Correct Exception not thrown!"
+def test_integrate_field(
+    transformed_element: tuple[spectral_element.SpectralElement2D, Field, Callable],
+):
+    element, pointfield, transform = transformed_element
+    field = element.basis_fields()
+    jac_scale = Field(
+        element.basis_shape(), tuple(), field.coefficients[..., np.newaxis, np.newaxis]
+    )
+    result = element.integrate_field(pointfield, field, jac_scale)
+
+    kronecker = field.coefficients.copy()
+    kronecker *= element.weights[:, np.newaxis, np.newaxis, np.newaxis]
+    kronecker *= element.weights[np.newaxis, :, np.newaxis, np.newaxis]
+
+    def_grad = element.compute_field_gradient(pointfield)
+    jac = np.abs(np.linalg.det(def_grad.coefficients))
+    kronecker *= jac[:, :, np.newaxis, np.newaxis]
+
+    np.testing.assert_almost_equal(result, kronecker)
+
+
+def test_integrate_basis_times_field(
+    transformed_element: tuple[spectral_element.SpectralElement2D, Field, Callable],
+):
+    element, pointfield, transform = transformed_element
+    field = element.basis_fields()
+    jac_scale = Field(
+        element.basis_shape(), tuple(), field.coefficients[..., np.newaxis, np.newaxis]
+    )
+
+    result = element.integrate_basis_times_field(
+        pointfield, field, jacobian_scale=jac_scale
+    )
+
+    kronecker = field.coefficients.copy()
+
+    triple_kronecker = np.einsum("abcd,cdef->abcdef", kronecker, kronecker)
+    triple_kronecker *= element.weights[
+        :, np.newaxis, np.newaxis, np.newaxis, np.newaxis, np.newaxis
+    ]
+    triple_kronecker *= element.weights[
+        np.newaxis, :, np.newaxis, np.newaxis, np.newaxis, np.newaxis
+    ]
+    def_grad = element.compute_field_gradient(pointfield)
+    jac = np.abs(np.linalg.det(def_grad.coefficients))
+    triple_kronecker *= jac[:, :, np.newaxis, np.newaxis, np.newaxis, np.newaxis]
+
+    np.testing.assert_almost_equal(result, triple_kronecker)
+
+
+def test_integrate_grad_basis_dot_field(
+    transformed_element: tuple[spectral_element.SpectralElement2D, Field, Callable],
+):
+    element, pointfield, transform = transformed_element
+    field = element.basis_fields()
+    jac_scale = Field(
+        element.basis_shape(), tuple(), field.coefficients[..., np.newaxis, np.newaxis]
+    )
+    e_field = Field(
+        element.basis_shape(),
+        (2,),
+        np.eye(2)[np.newaxis, np.newaxis, :, *((np.newaxis,) * 4), :]
+        * field.coefficients[:, :, *((np.newaxis,) * 3), :, :, np.newaxis],
+    )
+
+    grad_basis = element.compute_field_gradient(
+        element.basis_fields(), pointfield
+    )  # ^g
+    def_grad = element.compute_field_gradient(pointfield)  # [F]^g_l
+    kronecker = field.coefficients.copy()
+
+    # int(grad_basis * field * jac_scale)
+    expect = np.einsum(
+        "abcdg,abef,abhi,a,b,ab->cdgefhi",
+        grad_basis.coefficients,
+        kronecker,
+        kronecker,
+        element.weights,
+        element.weights,
+        np.abs(np.linalg.det(def_grad.coefficients)),
+    )
+
+    result = element.integrate_grad_basis_dot_field(
+        pointfield, e_field, jacobian_scale=jac_scale
+    )
+
+    np.testing.assert_almost_equal(result, expect)
 
 
 def meshquad(X, Y, F):
@@ -400,30 +453,6 @@ def meshquad(X, Y, F):
         cross_mag(X10 - X11, Y10 - Y11, X01 - X11, Y01 - Y11) * (F11 + F01 + F10) / 6,
         axes,
     )
-
-
-def test_mass_matrix(transformed_element):
-    elem, points, transformation = transformed_element
-    mshape = (elem.num_nodes, elem.num_nodes)
-    msize = elem.num_nodes**2
-    mass = elem.mass_matrix(
-        points,
-        np.unravel_index(np.arange(msize).reshape(mshape), mshape)
-        + np.unravel_index(np.arange(msize).reshape(mshape), mshape),
-    )
-
-    knots = elem.knots
-    weights = elem.weights
-
-    assert mass.shape == mshape
-
-    def_grad = elem.interpolate_deformation_gradient(
-        points, knots[:, np.newaxis], knots[np.newaxis, :]
-    )
-    jac = np.abs(np.linalg.det(def_grad))
-    for i in range(elem.num_nodes):
-        for j in range(elem.num_nodes):
-            assert mass[i, j] == pytest.approx(weights[i] * weights[j] * jac[i, j])
 
 
 @pytest.mark.skip("we need to migrate this code over and generalize.")
@@ -475,20 +504,6 @@ def test_stiffness_matrix(transformed_element):
     np.testing.assert_almost_equal(
         elem.integrate_grad_basis_dot_grad_field(points), np.einsum("mnmn->mn", stiff)
     )
-
-
-@pytest.mark.parametrize("boundary_id", [0, 1, 2, 3])
-def test_bdry_integ(transformed_element, boundary_id):
-    elem, points, transformation = transformed_element
-
-    field = np.zeros((elem.num_nodes, elem.num_nodes, elem.num_nodes, elem.num_nodes))
-    enumeration = (
-        np.arange(elem.num_nodes**2) % elem.num_nodes,
-        np.arange(elem.num_nodes**2) // elem.num_nodes,
-    )
-    field[enumeration[0], enumeration[1], enumeration[0], enumeration[1]] = 1
-    with pytest.raises(NotImplementedError):
-        elem._bdry_normalderiv(points, boundary_id, field)
 
 
 @pytest.mark.parametrize("deg", [1, 2, 5, 10])

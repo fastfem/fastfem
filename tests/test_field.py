@@ -1,6 +1,5 @@
 import fastfem.fields.field as field
 import numpy as np
-import pytest
 
 
 def shapes_generator(
@@ -32,7 +31,7 @@ def shapes_generator(
             newshape = shape + (k,)
             size = np.prod(newshape, dtype=int)
             if totalsizelims[0] <= size and (
-                totalsizelims[1] == None or size <= totalsizelims[1]
+                totalsizelims[1] is None or size <= totalsizelims[1]
             ):
                 yield newshape
 

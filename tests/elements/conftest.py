@@ -1,6 +1,8 @@
 import numpy as np
 import pytest
 
+from fastfem.fields.field import Field
+
 
 def transform_posmatrix(pos_matrix, mod, *args):
     if mod == "translate":
@@ -30,7 +32,7 @@ def transform_posmatrix(pos_matrix, mod, *args):
 
 
 _PRESET_TRANSFORMS = {
-    "ref": lambda x: x,
+    "id": lambda x: x,
     "translated": lambda x: transform_posmatrix(x, "translate", 5, -2),
     "rotated": lambda x: transform_posmatrix(x, "rotate", 1),
     "x-scaled": lambda x: transform_posmatrix(x, "scale", 2, 1),
@@ -58,11 +60,13 @@ def transform_stack(request):
     stackshape = tuple(3 for _ in range(ndims))
     stacksize = np.prod(stackshape, dtype=int)
 
-    def stack_transform(x):
-        y = np.empty(stackshape + x.shape)
-        transformed = [f(x) for f in transforms]
+    def stack_transform(x: Field):
+        y = np.empty(x.basis_shape + stackshape + x.stack_shape + x.field_shape)
+        transformed = [f(x.coefficients) for f in transforms]
         for i in range(stacksize):
-            y[*np.unravel_index(i, stackshape), ...] = transformed[i % len(transforms)]
-        return y
+            y[..., *np.unravel_index(i, stackshape), ...] = transformed[
+                i % len(transforms)
+            ]
+        return Field(x.basis_shape, x.field_shape, y)
 
     return stack_transform

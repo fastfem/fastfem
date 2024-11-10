@@ -149,9 +149,9 @@ class Field:
     @staticmethod
     def broadcast_fields_full(*fields):
         if Field.are_broadcastable(*fields):
-            basis_shape = np.broadcast_shapes([field.basis_shape for field in fields])
-            stack_shape = np.broadcast_shapes([field.stack_shape for field in fields])
-            field_shape = np.broadcast_shapes([field.field_shape for field in fields])
+            basis_shape = np.broadcast_shapes(*[field.basis_shape for field in fields])
+            stack_shape = np.broadcast_shapes(*[field.stack_shape for field in fields])
+            field_shape = np.broadcast_shapes(*[field.field_shape for field in fields])
             return tuple(
                 field.broadcast_to_shape(basis_shape, stack_shape, field_shape)
                 for field in fields
@@ -183,8 +183,8 @@ class Field:
     @staticmethod
     def broadcast_field_compatibility(*fields):
         if Field.are_compatible(*fields):
-            basis_shape = np.broadcast_shapes([field.basis_shape for field in fields])
-            stack_shape = np.broadcast_shapes([field.stack_shape for field in fields])
+            basis_shape = np.broadcast_shapes(*[field.basis_shape for field in fields])
+            stack_shape = np.broadcast_shapes(*[field.stack_shape for field in fields])
             return tuple(
                 field.broadcast_to_shape(basis_shape, stack_shape, field.field_shape)
                 for field in fields

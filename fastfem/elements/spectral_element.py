@@ -162,8 +162,8 @@ class SpectralElement2D(element.Element2D):
     def interpolate_field(
         self,
         field: Field,
-        X: NDArray,
-        Y: NDArray,
+        X: ArrayLike,
+        Y: ArrayLike,
     ) -> typing.Any:
         """Evaluates field at (X,Y) in reference coordinates.
         The result is an array of values `field(X,Y)`.
@@ -186,21 +186,21 @@ class SpectralElement2D(element.Element2D):
             typing.Any: The interpolated values `field(X,Y)`
         """
         field_pad = (np.newaxis,) * len(field.field_shape)
+        if not isinstance(X, np.ndarray):
+            X = np.array(X)
+        if not isinstance(Y, np.ndarray):
+            Y = np.array(Y)
         X = X[..., *field_pad]
         Y = Y[..., *field_pad]
         # F^{i,j} L_{i,j}(X,Y)
         # lagrange_polys[i,k] : component c in term cx^k of poly i
-        return Field(
-            self.basis_shape(),
-            field.field_shape,
-            np.einsum(
-                "ij...,ia,...a,jb,...b->...",
-                field.coefficients,
-                self._lagrange_polys,
-                np.expand_dims(X, -1) ** np.arange(self.num_nodes),
-                self._lagrange_polys,
-                np.expand_dims(Y, -1) ** np.arange(self.num_nodes),
-            ),
+        return np.einsum(
+            "ij...,ia,...a,jb,...b->...",
+            field.coefficients,
+            self._lagrange_polys,
+            np.expand_dims(X, -1) ** np.arange(self.num_nodes),
+            self._lagrange_polys,
+            np.expand_dims(Y, -1) ** np.arange(self.num_nodes),
         )
 
     # @warnings.deprecated("This can be done (probably cleaner) with JAX.")
@@ -831,7 +831,6 @@ class SpectralElement2D(element.Element2D):
         self,
         pos_matrix: Field,
         field: Field,
-        is_field_upper_index: bool,
         indices: colltypes.Sequence[ArrayLike] | None = None,
         jacobian_scale: Field = Field(tuple(), tuple(), 1),
     ) -> NDArray:
@@ -865,8 +864,10 @@ class SpectralElement2D(element.Element2D):
         pos_matrix, field, jacobian_scale = Field.broadcast_field_compatibility(
             pos_matrix, field, jacobian_scale
         )
-        field_pad = (np.newaxis,) * len(field.field_shape)
-        def_grad = self.compute_field_gradient(pos_matrix).coefficients
+
+        # last index is contracted
+        field_pad = (np.newaxis,) * (len(field.field_shape) - 1)
+        def_grad = self.compute_field_gradient(pos_matrix).coefficients  # ^g_l
         # int (grad phi1 . grad field)
         w = np.einsum(
             "i,j,ij...,ij...->ij...",
@@ -879,14 +880,12 @@ class SpectralElement2D(element.Element2D):
         lag_div = self.lagrange_eval1D(1)
         # [i,j,...,dim] partial_dim field(xi,xj)
 
-        if not is_field_upper_index:
-            def_grad_inv = np.linalg.inv(def_grad)[..., *field_pad, :, :]
-            field = np.einsum(
-                "ij...ab,ij...db,ij...d->ij...a",
-                def_grad_inv,
-                def_grad_inv,
-                field.coefficients,
-            )
+        def_grad_inv = np.linalg.inv(def_grad)[..., *field_pad, :, :]  # ^l_g
+        field_local_upper = np.einsum(
+            "...lg,...g->...l",
+            def_grad_inv,
+            field.coefficients,
+        )
 
         # integrand is
         # [ field(xi,xj) ] * [ partial_dim (L_m(xi)L_n(xj)) ]
@@ -900,16 +899,13 @@ class SpectralElement2D(element.Element2D):
         #           + (field(xi,xj)) delta_{dim,1} delta_{mi} L_n'(xj) w_{ij}
         # = (field_0(xi,xn)) L_m'(xi)w_{in} + (field_1(xm,xj)) L_n'(xj) w_{mj}
 
-        KF = np.empty(np.broadcast_shapes(pos_matrix.shape, field.shape))  # type: ignore
-        KF[:, :] = np.einsum(
-            "in...,im,in->mn...", field[..., 0], lag_div, w  # type: ignore
-        )  # type: ignore
-        KF[:, :] += np.einsum(
-            "mj...,jn,mj->mn...", field[..., 1], lag_div, w  # type: ignore
-        )  # type: ignore
+        KF = np.einsum("in...,mi,in...->mn...", field_local_upper[..., 0], lag_div, w)
+        KF[...] += np.einsum(
+            "mj...,nj,mj...->mn...", field_local_upper[..., 1], lag_div, w
+        )
         if indices is None:
             return KF
-        return KF[*indices, ...]  # type: ignore
+        return KF[*indices, ...]
 
     @typing.override
     def integrate_grad_basis_dot_grad_field(
