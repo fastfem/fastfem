@@ -87,72 +87,55 @@ def test_field_construction():
                         field.Field(basis_shape, field_shape_, coefs)
 
 
-def test_shape_broadcastability_and_compatibility():
-    for a in shapes():
-        for b in shapes():
-            for c in shapes():
-                broadcastable = field._is_broadcastable(a, b, c)
-                compatible = field._is_compatible(a, b, c)
-                try:
-                    target = np.broadcast_shapes(a, b, c)
-                    assert compatible, (
-                        f"Numpy broadcasts {a}, {b}, {c} -> {target}, but"
-                        f" _is_compatible(...) == {compatible}, which should be True."
-                    )
-                    assert (target == a) == broadcastable, (
-                        f"Numpy broadcasts {a}, {b}, {c} -> {target}, but"
-                        f" _is_broadcastable(...) == {compatible}, which should be"
-                        f" {target == a}."
-                    )
-                except ValueError:
-                    assert not (broadcastable or compatible), (
-                        f"Numpy failed to broadcast {a}, {b}, {c}, but this disagrees"
-                        " with field functions: _is_broadcastable(...) =="
-                        f" {broadcastable}, _is_compatible(...) == {compatible}."
-                    )
+def test_shape_broadcastability_and_compatibility(comparison_three_shapes):
+    for a, b, c, np_compatible in comparison_three_shapes:
+        broadcastable = field._is_broadcastable(a, b, c)
+        compatible = field._is_compatible(a, b, c)
+        if np_compatible:
+            target = np.broadcast_shapes(a, b, c)
+            assert compatible, (
+                f"Numpy broadcasts {a}, {b}, {c} -> {target}, but"
+                f" _is_compatible(...) == {compatible}, which should be True."
+            )
+            assert (target == a) == broadcastable, (
+                f"Numpy broadcasts {a}, {b}, {c} -> {target}, but"
+                f" _is_broadcastable(...) == {compatible}, which should be"
+                f" {target == a}."
+            )
+        else:
+            assert not (broadcastable or compatible), (
+                f"Numpy failed to broadcast {a}, {b}, {c}, but this disagrees"
+                " with field functions: _is_broadcastable(...) =="
+                f" {broadcastable}, _is_compatible(...) == {compatible}."
+            )
 
 
-def test_field_broadcast_compatibility_on_triples():
-    for a in shapes_small():
-        for b in shapes_small():
-            for c in shapes_small():
-                for a_ in shapes_small():
-                    for b_ in shapes_small():
-                        for c_ in shapes_small():
-                            nonconst = [
-                                s for s in (a, b, c) if np.prod(s, dtype=int) != 1
-                            ]
-                            compatibility = field._is_compatible(a_, b_, c_) and (
-                                len(nonconst) == 0
-                                or all(nonconst[0] == s for s in nonconst)
-                            )
-                            fa = field.Field(a, tuple(), np.random.rand(*(a + a_)))
-                            fb = field.Field(b, tuple(), np.random.rand(*(b + b_)))
-                            fc = field.Field(c, tuple(), np.random.rand(*(c + c_)))
-                            assert (
-                                field.Field.are_compatible(fa, fb, fc) == compatibility
-                            ), (
-                                f"{fa.shape}, {fb.shape} and"
-                                f" {fc.shape} broadcastibility should be"
-                                f" {compatibility}."
-                            )
-                            if compatibility:
-                                fa2, fb2, fc2 = (
-                                    field.Field.broadcast_field_compatibility(
-                                        fa, fb, fc
-                                    )
-                                )
-                                assert fa == fa2
-                                assert fb == fb2
-                                assert fc == fc2
-                            else:
-                                with pytest.raises(field.FieldShapeError):
-                                    field.Field.broadcast_field_compatibility(
-                                        fa, fb, fc
-                                    )
+def test_field_broadcast_compatibility_on_triples(comparison_three_shapes):
+    for a, b, c, _ in comparison_three_shapes:
+        for a_, b_, c_, _ in comparison_three_shapes:
+            nonconst = [s for s in (a, b, c) if np.prod(s, dtype=int) != 1]
+            compatibility = field._is_compatible(a_, b_, c_) and (
+                len(nonconst) == 0 or all(nonconst[0] == s for s in nonconst)
+            )
+            fa = field.Field(a, tuple(), np.random.rand(*(a + a_)))
+            fb = field.Field(b, tuple(), np.random.rand(*(b + b_)))
+            fc = field.Field(c, tuple(), np.random.rand(*(c + c_)))
+            assert field.Field.are_compatible(fa, fb, fc) == compatibility, (
+                f"{fa.shape}, {fb.shape} and"
+                f" {fc.shape} broadcastibility should be"
+                f" {compatibility}."
+            )
+            if compatibility:
+                fa2, fb2, fc2 = field.Field.broadcast_field_compatibility(fa, fb, fc)
+                assert fa == fa2
+                assert fb == fb2
+                assert fc == fc2
+            else:
+                with pytest.raises(field.FieldShapeError):
+                    field.Field.broadcast_field_compatibility(fa, fb, fc)
 
 
-def test_field_broadcast_full_on_doubles():
+def test_field_reshaping_errors():
     for a in shapes_small():
         for a_ in shapes_small():
             for a__ in shapes_small():
@@ -170,35 +153,34 @@ def test_field_broadcast_full_on_doubles():
                     with pytest.raises(field.FieldShapeError):
                         fa.broadcast_to_shape(a, a_, a__diff)
 
-                for b in shapes_small():
-                    for b_ in shapes_small():
-                        for b__ in shapes_small():
-                            broadcastibility = (
-                                field._is_compatible(a_, b_)
-                                and field._is_compatible(a__, b__)
-                                and (
-                                    np.prod(b, dtype=int) == 1
-                                    or np.prod(a, dtype=int) == 1
-                                    or a == b
-                                )
-                            )
-                            fb = field.Field(b, b__, np.random.rand(*(b + b_ + b__)))
-                            assert (
-                                field.Field.are_broadcastable(fa, fb)
-                                == broadcastibility
-                            ), (
-                                f"{fa.shape} and {fb.shape} broadcastibility should be"
-                                f" {broadcastibility}."
-                            )
-                            if broadcastibility:
-                                fa2, fb2 = field.Field.broadcast_fields_full(fa, fb)
-                                assert fa == fa2
-                                assert fb == fb2
-                                fa3 = fa.broadcast_to_shape(
-                                    fa2.basis_shape, fa2.stack_shape, fa2.field_shape
-                                )
-                                assert fa3 == fa2
-                            else:
-                                assert fa != fb
-                                with pytest.raises(field.FieldShapeError):
-                                    field.Field.broadcast_fields_full(fa, fb)
+
+def test_field_broadcast_full_on_doubles(comparison_two_shapes):
+    for val1, val2, _ in comparison_two_shapes:
+        for a, b, a_, b_, a__, b__ in [
+            (val1, val2, val1, val1, val1, val1),
+            (val1, val1, val1, val2, val1, val1),
+            (val1, val1, val1, val1, val1, val2),
+        ]:
+            broadcastibility = (
+                field._is_compatible(a_, b_)
+                and field._is_compatible(a__, b__)
+                and (np.prod(b, dtype=int) == 1 or np.prod(a, dtype=int) == 1 or a == b)
+            )
+            fa = field.Field(a, a__, np.random.rand(*(a + a_ + a__)))
+            fb = field.Field(b, b__, np.random.rand(*(b + b_ + b__)))
+            assert field.Field.are_broadcastable(fa, fb) == broadcastibility, (
+                f"{fa.shape} and {fb.shape} broadcastibility should be"
+                f" {broadcastibility}."
+            )
+            if broadcastibility:
+                fa2, fb2 = field.Field.broadcast_fields_full(fa, fb)
+                assert fa == fa2
+                assert fb == fb2
+                fa3 = fa.broadcast_to_shape(
+                    fa2.basis_shape, fa2.stack_shape, fa2.field_shape
+                )
+                assert fa3 == fa2
+            else:
+                assert fa != fb
+                with pytest.raises(field.FieldShapeError):
+                    field.Field.broadcast_fields_full(fa, fb)
