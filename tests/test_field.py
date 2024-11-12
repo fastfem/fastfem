@@ -1,6 +1,8 @@
 import fastfem.fields.field as field
 import numpy as np
 
+import pytest
+
 
 def shapes_generator(
     dimcountlims: tuple[int, int] = (0, 4),
@@ -55,6 +57,36 @@ def shapes_small():
     yield (0, 1)
 
 
+def test_field_construction():
+    # attr should fail for other things
+    with pytest.raises(AttributeError):
+        field.Field(tuple(), tuple(), 1)._shape
+    for basis_shape in shapes_small():
+        for field_shape in shapes_small():
+            f = field.Field(
+                basis_shape, field_shape, np.empty(field_shape)
+            )  # this will work
+            assert f.shape == (basis_shape, tuple(), field_shape)
+            for stack_shape in shapes_small():
+                coefs = np.empty(basis_shape + stack_shape + field_shape)
+                f = field.Field(
+                    basis_shape,
+                    field_shape,
+                    coefs,
+                )  # this will work
+                assert f.shape == (basis_shape, stack_shape, field_shape)
+
+                # these wont
+                if np.prod(basis_shape, dtype=int) > 1:
+                    basis_shape_ = tuple(ax + 1 for ax in basis_shape)
+                    with pytest.raises(field.FieldConstructionError):
+                        field.Field(basis_shape_, field_shape, coefs)
+                if np.prod(field_shape, dtype=int) > 1:
+                    field_shape_ = tuple(ax + 1 for ax in field_shape)
+                    with pytest.raises(field.FieldConstructionError):
+                        field.Field(basis_shape, field_shape_, coefs)
+
+
 def test_shape_broadcastability_and_compatibility():
     for a in shapes():
         for b in shapes():
@@ -94,9 +126,9 @@ def test_field_broadcast_compatibility_on_triples():
                                 len(nonconst) == 0
                                 or all(nonconst[0] == s for s in nonconst)
                             )
-                            fa = field.Field(a, tuple(), np.empty(a + a_))
-                            fb = field.Field(b, tuple(), np.empty(b + b_))
-                            fc = field.Field(c, tuple(), np.empty(c + c_))
+                            fa = field.Field(a, tuple(), np.random.rand(*(a + a_)))
+                            fb = field.Field(b, tuple(), np.random.rand(*(b + b_)))
+                            fc = field.Field(c, tuple(), np.random.rand(*(c + c_)))
                             assert (
                                 field.Field.are_compatible(fa, fb, fc) == compatibility
                             ), (
@@ -106,19 +138,40 @@ def test_field_broadcast_compatibility_on_triples():
                             )
                             if compatibility:
                                 fa2, fb2, fc2 = (
-                                    field.Field.broadcast_field_compatibility(a, b, c)
+                                    field.Field.broadcast_field_compatibility(
+                                        fa, fb, fc
+                                    )
                                 )
                                 assert fa == fa2
                                 assert fb == fb2
                                 assert fc == fc2
+                            else:
+                                with pytest.raises(field.FieldShapeError):
+                                    field.Field.broadcast_field_compatibility(
+                                        fa, fb, fc
+                                    )
 
 
 def test_field_broadcast_full_on_doubles():
     for a in shapes_small():
-        for b in shapes_small():
-            for a_ in shapes_small():
-                for b_ in shapes_small():
-                    for a__ in shapes_small():
+        for a_ in shapes_small():
+            for a__ in shapes_small():
+                fa = field.Field(a, a__, np.random.rand(*(a + a_ + a__)))
+                if np.prod(a, dtype=int) > 1:
+                    adiff = tuple(ax + 1 for ax in a)
+                    with pytest.raises(field.FieldShapeError):
+                        fa.broadcast_to_shape(adiff, a_, a__)
+                if np.prod(a_, dtype=int) > 1:
+                    a_diff = tuple(ax + 1 for ax in a_)
+                    with pytest.raises(field.FieldShapeError):
+                        fa.broadcast_to_shape(a, a_diff, a__)
+                if np.prod(a__, dtype=int) > 1:
+                    a__diff = tuple(ax + 1 for ax in a__)
+                    with pytest.raises(field.FieldShapeError):
+                        fa.broadcast_to_shape(a, a_, a__diff)
+
+                for b in shapes_small():
+                    for b_ in shapes_small():
                         for b__ in shapes_small():
                             broadcastibility = (
                                 field._is_compatible(a_, b_)
@@ -129,8 +182,7 @@ def test_field_broadcast_full_on_doubles():
                                     or a == b
                                 )
                             )
-                            fa = field.Field(a, a__, np.empty(a + a_ + a__))
-                            fb = field.Field(b, b__, np.empty(b + b_ + b__))
+                            fb = field.Field(b, b__, np.random.rand(*(b + b_ + b__)))
                             assert (
                                 field.Field.are_broadcastable(fa, fb)
                                 == broadcastibility
@@ -142,3 +194,11 @@ def test_field_broadcast_full_on_doubles():
                                 fa2, fb2 = field.Field.broadcast_fields_full(fa, fb)
                                 assert fa == fa2
                                 assert fb == fb2
+                                fa3 = fa.broadcast_to_shape(
+                                    fa2.basis_shape, fa2.stack_shape, fa2.field_shape
+                                )
+                                assert fa3 == fa2
+                            else:
+                                assert fa != fb
+                                with pytest.raises(field.FieldShapeError):
+                                    field.Field.broadcast_fields_full(fa, fb)

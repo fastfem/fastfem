@@ -118,7 +118,7 @@ class SpectralElement2D(element.Element2D):
         return (self.num_nodes, self.num_nodes)
 
     @typing.override
-    def reference_element_position_matrix(self) -> Field:
+    def reference_element_position_field(self) -> Field:
         """
         The position field of the reference (un-transformed) element. This is a vector
         field.
@@ -159,11 +159,11 @@ class SpectralElement2D(element.Element2D):
         return coefs
 
     @typing.override
-    def interpolate_field(
+    def _interpolate_field(
         self,
         field: Field,
-        X: ArrayLike,
-        Y: ArrayLike,
+        X: NDArray,
+        Y: NDArray,
     ) -> typing.Any:
         """Evaluates field at (X,Y) in reference coordinates.
         The result is an array of values `field(X,Y)`.
@@ -177,8 +177,8 @@ class SpectralElement2D(element.Element2D):
         Args:
             field (Field): an array of shape (degree+1,degree+1,*fieldshape)
                 representing the field to be interpolated.
-            X (ArrayLike): x values (in reference coordinates).
-            Y (ArrayLike): y values (in reference coordinates).
+            X (NDArray): x values (in reference coordinates).
+            Y (NDArray): y values (in reference coordinates).
             fieldshape (tuple[int,...], optional): the shape of `field` at each point.
                 Defaults to tuple() for a scalar field.
 
@@ -186,10 +186,6 @@ class SpectralElement2D(element.Element2D):
             typing.Any: The interpolated values `field(X,Y)`
         """
         field_pad = (np.newaxis,) * len(field.field_shape)
-        if not isinstance(X, np.ndarray):
-            X = np.array(X)
-        if not isinstance(Y, np.ndarray):
-            Y = np.array(Y)
         X = X[..., *field_pad]
         Y = Y[..., *field_pad]
         # F^{i,j} L_{i,j}(X,Y)
@@ -206,7 +202,7 @@ class SpectralElement2D(element.Element2D):
     # @warnings.deprecated("This can be done (probably cleaner) with JAX.")
     def locate_point(
         self,
-        pos_matrix: np.ndarray,
+        pos_field: np.ndarray,
         posx: float,
         posy: float,
         tol: float = 1e-8,
@@ -248,10 +244,10 @@ class SpectralElement2D(element.Element2D):
         (abs(det(def_grad)) < def_grad_badness_tol*char_x*char_y ),
         and raise an exception.
         Here, char_x and char_y are characteristic lengths of the element,
-        and are calculated from pos_matrix when not defined.
+        and are calculated from pos_field when not defined.
 
         Args:
-            pos_matrix (np.ndarray): an array representing the positions of the
+            pos_field (np.ndarray): an array representing the positions of the
                     element nodes. This is of the shape `(*basis_shape,2)`.
             posx (float): the x coordinate in global coordinates to find.
             posy (float): the y coordinate in global coordinates to find.
@@ -269,11 +265,11 @@ class SpectralElement2D(element.Element2D):
                     point outside of the domain. If False, then locate_point stays
                     within the element. Defaults to False.
             char_x (float | None, optional): characteristic x-length of the element.
-                    When not set, a characteristic value is computed from pos_matrix,
+                    When not set, a characteristic value is computed from pos_field,
                     set to approximately the largest length curve of the position field
                     along constant local y. Defaults to None.
             char_y (float | None, optional): characteristic y-length of the element.
-                    When not set, a characteristic value is computed from pos_matrix,
+                    When not set, a characteristic value is computed from pos_field,
                     set to approximately the largest length curve of the position field
                     along constant local x. Defaults to None.
 
@@ -291,9 +287,7 @@ class SpectralElement2D(element.Element2D):
             # along each x-line, add the distances between nodes
             char_x = np.min(
                 np.sum(  # take min across y-values, of x-line sums
-                    np.linalg.norm(
-                        pos_matrix[1:, :, :] - pos_matrix[:-1, :, :], axis=-1
-                    ),
+                    np.linalg.norm(pos_field[1:, :, :] - pos_field[:-1, :, :], axis=-1),
                     axis=0,
                 )
             )
@@ -301,15 +295,13 @@ class SpectralElement2D(element.Element2D):
         if char_y is None:
             char_y = np.min(
                 np.sum(  # take min across x-values, of y-line sums
-                    np.linalg.norm(
-                        pos_matrix[:, 1:, :] - pos_matrix[:, :-1, :], axis=-1
-                    ),
+                    np.linalg.norm(pos_field[:, 1:, :] - pos_field[:, :-1, :], axis=-1),
                     axis=1,
                 )
             )
 
         target = np.array((posx, posy))
-        node_errs = np.sum((pos_matrix - target) ** 2, axis=-1)
+        node_errs = np.sum((pos_field - target) ** 2, axis=-1)
         mindex = np.unravel_index(np.argmin(node_errs), (Np1, Np1))
 
         # local coords of guess
@@ -318,7 +310,7 @@ class SpectralElement2D(element.Element2D):
         # position poly
         # sum(x^{i,j} L_{i,j}) -> [dim,k,l] (coefficient of cx^ky^l for dim)
         x_poly = np.einsum(
-            "ijd,ik,jl->dkl", pos_matrix, self._lagrange_polys, self._lagrange_polys
+            "ijd,ik,jl->dkl", pos_field, self._lagrange_polys, self._lagrange_polys
         )
 
         # local to global
@@ -500,7 +492,9 @@ class SpectralElement2D(element.Element2D):
                 `np.arange(degree+1)[:,...]` is used.
                 Defaults to None.
             x (ArrayLike | None, optional): an array of points to sample the Lagrange
-                polynomials. If None, then `self.knots` is used. Defaults to None.
+                polynomials. If None, then `self.knots` is used, and lag_index is
+                treated as having an extra axis at the end. That is, the returned array
+                has shape (*lag_index.shape, len(self.knots)). Defaults to None.
 
         Returns:
             NDArray: the result of the evaluation.
@@ -521,7 +515,7 @@ class SpectralElement2D(element.Element2D):
             if not isinstance(lag_index, np.ndarray):
                 lag_index = np.array(lag_index)
             return self._lagrange_at_knots[deriv_order][
-                lag_index, np.arange(self.num_nodes)
+                lag_index[..., np.newaxis], np.arange(self.num_nodes)
             ]
         if not isinstance(x, np.ndarray):
             x = np.array(x)
@@ -542,10 +536,10 @@ class SpectralElement2D(element.Element2D):
         )
 
     @typing.override
-    def compute_field_gradient(
+    def _compute_field_gradient(
         self,
         field: Field,
-        pos_matrix: Field | None = None,
+        pos_field: Field | None = None,
     ) -> Field:
         """
         Calculates the gradient of a field f, returning a new field.
@@ -556,14 +550,14 @@ class SpectralElement2D(element.Element2D):
 
         This gradient can be computed in either reference space (with respect
         to the coordinates of the reference element), or in global space.
-        If a global cartesian gradient should be calculated, then pos_matrix
+        If a global cartesian gradient should be calculated, then pos_field
         must be set to the coordinate matrix of the element. Otherwise,
-        pos_matrix can be kept None.
+        pos_field can be kept None.
 
         Args:
             field (ArrayLike): an array of shape (*basis_shape,...,*fieldshape)
                 representing the field to be interpolated.
-            pos_matrix (ArrayLike | None, optional): If set, `pos_matrix` specifies
+            pos_field (ArrayLike | None, optional): If set, `pos_field` specifies
                 the position fields of the element, and the gradient will be computed in
                 Cartesian coordinates. This method supports element-stacking.
                 Defaults to None.
@@ -587,11 +581,11 @@ class SpectralElement2D(element.Element2D):
         )
         grad = np.stack([x_deriv, y_deriv], -1)
 
-        if pos_matrix is not None:
+        if pos_field is not None:
             # (*pointshape,*stackshape,2{i},2{j}): dX^i/dx_j
             # must pad after stackshape
             field_pad = (np.newaxis,) * len(field.field_shape)
-            def_grad = self.compute_field_gradient(pos_matrix)
+            def_grad = self.compute_field_gradient(pos_field)
             # grad is (*pointshape,*fieldshape,j): dF/dx_j
             # so we need the inverse
             return self.Field(
@@ -607,12 +601,12 @@ class SpectralElement2D(element.Element2D):
         return self.Field(grad, False, field.field_shape + (2,))
 
     @typing.override
-    def interpolate_field_gradient(
+    def _interpolate_field_gradient(
         self,
         field: Field,
         X: NDArray,
         Y: NDArray,
-        pos_matrix: Field | None = None,
+        pos_field: Field | None = None,
     ) -> NDArray:
         """
         Calculates the gradient of a field f at the reference coordinates (X,Y).
@@ -625,16 +619,16 @@ class SpectralElement2D(element.Element2D):
 
         This gradient can be computed in either reference space (with respect
         to the coordinates of the reference element), or in global space.
-        If a global cartesian gradient should be calculated, then pos_matrix
+        If a global cartesian gradient should be calculated, then pos_field
         must be set to the coordinate matrix of the element. Otherwise,
-        pos_matrix can be kept None.
+        pos_field can be kept None.
 
         Args:
             field (ArrayLike): an array of shape (*basis_shape,*fieldshape)
                 representing the field to be interpolated.
             X (ArrayLike): x values (in reference coordinates).
             Y (ArrayLike): y values (in reference coordinates).
-            pos_matrix (ArrayLike | None, optional): If set, `pos_matrix` specifies
+            pos_field (ArrayLike | None, optional): If set, `pos_field` specifies
                 the position fields of the element, and the gradient will be computed in
                 Cartesian coordinates. Defaults to None.
             fieldshape (tuple[int,...], optional): the shape of `field` pointwise.
@@ -644,7 +638,8 @@ class SpectralElement2D(element.Element2D):
             NDArray: an array representing the gradient of the field evaluated
                 at each point.
         """
-        field, pos_matrix = Field.broadcast_field_compatibility(field, pos_matrix)
+        if pos_field is not None:
+            field, pos_field = Field.broadcast_field_compatibility(field, pos_field)
         field_pad = (np.newaxis,) * len(field.field_shape)
         X = X[..., *field_pad]
         Y = Y[..., *field_pad]
@@ -663,9 +658,9 @@ class SpectralElement2D(element.Element2D):
         )
         grad = np.stack([x_deriv, y_deriv], -1)
 
-        if pos_matrix is not None:
+        if pos_field is not None:
             # (*pointshape,*stackshape*,2{i},2{j}): dX^i/dx_j
-            def_grad = self.interpolate_field_gradient(pos_matrix, X, Y)
+            def_grad = self.interpolate_field_gradient(pos_field, X, Y)
             # grad is (*pointshape,*fieldshape,j): dF/dx_j
             # so we need the inverse
             return np.einsum("...ji,...j->...i", np.linalg.inv(def_grad), grad)
@@ -673,9 +668,9 @@ class SpectralElement2D(element.Element2D):
         return grad
 
     @typing.override
-    def integrate_field(
+    def _integrate_field(
         self,
-        pos_matrix: Field,
+        pos_field: Field,
         field: Field,
         jacobian_scale: Field = Field(tuple(), tuple(), 1),
     ) -> NDArray:
@@ -685,7 +680,7 @@ class SpectralElement2D(element.Element2D):
         `(...,*field_shape)`.
 
         Args:
-            pos_matrix (ArrayLike): an array representing the positions of the
+            pos_field (ArrayLike): an array representing the positions of the
                     element nodes. This is of the shape `(basis_shape,...,2)`
             field (ArrayLike): an array of shape (*basis_shape,...,*fieldshape)
                 representing the field to be interpolated.
@@ -698,26 +693,26 @@ class SpectralElement2D(element.Element2D):
         Returns:
             NDArray: The resultant integral, an array of shape `(...,*fieldshape)`.
         """
-        pos_matrix, field, jacobian_scale = Field.broadcast_field_compatibility(
-            pos_matrix, field, jacobian_scale
+        pos_field, field, jacobian_scale = Field.broadcast_field_compatibility(
+            pos_field, field, jacobian_scale
         )
         field_pad = (np.newaxis,) * len(field.field_shape)
         Jw = np.einsum(
             "i,j,ij...,ij...->ij...",
             self.weights,
             self.weights,
-            np.abs(np.linalg.det(self.compute_field_gradient(pos_matrix).coefficients)),
+            np.abs(np.linalg.det(self.compute_field_gradient(pos_field).coefficients)),
             jacobian_scale.coefficients,
         )[..., *field_pad]
         return np.einsum("ij...,ij...->...", Jw, field.coefficients)
 
     @typing.override
-    def integrate_basis_times_field(
+    def _integrate_basis_times_field(
         self,
-        pos_matrix: Field,
+        pos_field: Field,
         field: Field,
         indices: colltypes.Sequence[ArrayLike] | None = None,
-        jacobian_scale: Field = Field(tuple(), tuple(), None),
+        jacobian_scale: Field = Field(tuple(), tuple(), 1),
     ) -> NDArray:
         """
         Computes the integral $\\int \\alpha \\phi_i f ~ dV$
@@ -726,7 +721,7 @@ class SpectralElement2D(element.Element2D):
         as the identity.
 
         Args:
-            pos_matrix (ArrayLike): an array representing the positions of the
+            pos_field (ArrayLike): an array representing the positions of the
                     element nodes. This is of the shape `(basis_shape,...,2)`
             field (ArrayLike): an array of shape `(*basis_shape,...,*fieldshape)`
                 representing the field to be interpolated.
@@ -744,15 +739,15 @@ class SpectralElement2D(element.Element2D):
                 `(indices.shape,...,*fieldshape)`, or `(*basis_shape,...,*fieldshape)`
                 if `indices` is None.
         """
-        pos_matrix, field, jacobian_scale = Field.broadcast_field_compatibility(
-            pos_matrix, field, jacobian_scale
+        pos_field, field, jacobian_scale = Field.broadcast_field_compatibility(
+            pos_field, field, jacobian_scale
         )
         field_pad = (np.newaxis,) * len(field.field_shape)
         Jw = np.einsum(
             "i,j,ij...,ij...->ij...",
             self.weights,
             self.weights,
-            np.abs(np.linalg.det(self.compute_field_gradient(pos_matrix).coefficients)),
+            np.abs(np.linalg.det(self.compute_field_gradient(pos_field).coefficients)),
             jacobian_scale.coefficients,
         )[..., *field_pad]
         if indices is None:
@@ -760,15 +755,15 @@ class SpectralElement2D(element.Element2D):
         return np.einsum("ij...,ij...->ij...", Jw, field.coefficients)[*indices, ...]
 
     @typing.override
-    def mass_matrix(
+    def _mass_matrix(
         self,
-        pos_matrix: Field,
+        pos_field: Field,
         indices: colltypes.Sequence[np.ndarray] | None = None,
-        jacobian_scale: Field = Field(tuple(), tuple(), None),
+        jacobian_scale: Field = Field(tuple(), tuple(), 1),
     ) -> NDArray:
         """
         Recovers the mass matrix entries $\\int \\alpha \\phi_i \\phi_j ~ dV$
-        for this element. `pos_matrix` has shape `(basis_shape,...,2)`, where the
+        for this element. `pos_field` has shape `(basis_shape,...,2)`, where the
         ellipses represent element stacking.
 
         The full mass matrix is of shape
@@ -777,11 +772,11 @@ class SpectralElement2D(element.Element2D):
         obtained by passing into the `indices` argument. The implementation of
         `basis_mass_matrix` should assume that `indices` argument is smaller than the
         whole matrix, so if `M[*indices]` is larger than `M`, one should use
-        `basis_mass_matrix(pos_matrix)[*indices,...]` instead of
-        `basis_mass_matrix(pos_matrix,indices)`.
+        `basis_mass_matrix(pos_field)[*indices,...]` instead of
+        `basis_mass_matrix(pos_field,indices)`.
 
         Args:
-            pos_matrix (ArrayLike): an array representing the positions of the
+            pos_field (ArrayLike): an array representing the positions of the
                     element nodes. This is of the shape `(basis_shape,...,2)`
             indices (colltypes.Sequence[ArrayLike] | None, optional): Indices of the mass
                     matrix to access, or None if the whole matrix should be returned.
@@ -799,21 +794,22 @@ class SpectralElement2D(element.Element2D):
 
         # weights [i,j] times jacobian
 
-        pos_matrix, jacobian_scale = Field.broadcast_field_compatibility(
-            pos_matrix, jacobian_scale
+        pos_field, jacobian_scale = Field.broadcast_field_compatibility(
+            pos_field, jacobian_scale
         )
         Jw = np.einsum(
             "i,j,ij...,ij...->ij...",
             self.weights,
             self.weights,
-            np.abs(np.linalg.det(self.compute_field_gradient(pos_matrix).coefficients)),
+            np.abs(np.linalg.det(self.compute_field_gradient(pos_field).coefficients)),
             jacobian_scale.coefficients,
         )
         aux_pad = tuple(np.newaxis for _ in range(len(Jw.shape) - 2))
         basis_dims = len(self.basis_shape())
         if indices is None:
             return (
-                self.basis_fields() * Jw[*(np.newaxis for _ in range(basis_dims)), ...]
+                self.basis_fields().coefficients
+                * Jw[*(np.newaxis for _ in range(basis_dims)), ...]
             )
         indsI = np.array(indices[:basis_dims], dtype=int)
         indsJ = np.array(indices[basis_dims:], dtype=int)
@@ -827,9 +823,9 @@ class SpectralElement2D(element.Element2D):
         )
 
     @typing.override
-    def integrate_grad_basis_dot_field(
+    def _integrate_grad_basis_dot_field(
         self,
-        pos_matrix: Field,
+        pos_field: Field,
         field: Field,
         indices: colltypes.Sequence[ArrayLike] | None = None,
         jacobian_scale: Field = Field(tuple(), tuple(), 1),
@@ -840,7 +836,7 @@ class SpectralElement2D(element.Element2D):
         `field`, which must have size equal to the domain dimension.
 
         Args:
-            pos_matrix (ArrayLike): an array representing the positions of the
+            pos_field (ArrayLike): an array representing the positions of the
                     element nodes. This is of the shape `(basis_shape,...,2)`
             field (ArrayLike): an array of shape (*basis_shape,...,*fieldshape)
                 representing the field to be interpolated.
@@ -861,13 +857,13 @@ class SpectralElement2D(element.Element2D):
                 `(indices.shape,...,*fieldshape)`, or `(*basis_shape,...,*fieldshape)`
                 if `indices` is None.
         """
-        pos_matrix, field, jacobian_scale = Field.broadcast_field_compatibility(
-            pos_matrix, field, jacobian_scale
+        pos_field, field, jacobian_scale = Field.broadcast_field_compatibility(
+            pos_field, field, jacobian_scale
         )
 
         # last index is contracted
         field_pad = (np.newaxis,) * (len(field.field_shape) - 1)
-        def_grad = self.compute_field_gradient(pos_matrix).coefficients  # ^g_l
+        def_grad = self.compute_field_gradient(pos_field).coefficients  # ^g_l
         # int (grad phi1 . grad field)
         w = np.einsum(
             "i,j,ij...,ij...->ij...",
@@ -876,7 +872,7 @@ class SpectralElement2D(element.Element2D):
             np.abs(np.linalg.det(def_grad)),
             jacobian_scale.coefficients,
         )[..., *field_pad]
-        # [i,k] L_k'(x_i)
+        # [k,i] L_k'(x_i)
         lag_div = self.lagrange_eval1D(1)
         # [i,j,...,dim] partial_dim field(xi,xj)
 
@@ -899,18 +895,17 @@ class SpectralElement2D(element.Element2D):
         #           + (field(xi,xj)) delta_{dim,1} delta_{mi} L_n'(xj) w_{ij}
         # = (field_0(xi,xn)) L_m'(xi)w_{in} + (field_1(xm,xj)) L_n'(xj) w_{mj}
 
-        KF = np.einsum("in...,mi,in...->mn...", field_local_upper[..., 0], lag_div, w)
-        KF[...] += np.einsum(
-            "mj...,nj,mj...->mn...", field_local_upper[..., 1], lag_div, w
-        )
+        KF = np.einsum(
+            "in...,mi,in...->mn...", field_local_upper[..., 0], lag_div, w
+        ) + np.einsum("mj...,nj,mj...->mn...", field_local_upper[..., 1], lag_div, w)
         if indices is None:
             return KF
         return KF[*indices, ...]
 
     @typing.override
-    def integrate_grad_basis_dot_grad_field(
+    def _integrate_grad_basis_dot_grad_field(
         self,
-        pos_matrix: Field,
+        pos_field: Field,
         field: Field,
         indices: colltypes.Sequence[ArrayLike] | None = None,
         jacobian_scale: Field = Field(tuple(), tuple(), 1),
@@ -920,7 +915,7 @@ class SpectralElement2D(element.Element2D):
         for a field $f$, on this element. The dot product is over the gradients.
 
         Args:
-            pos_matrix (ArrayLike): an array representing the positions of the
+            pos_field (ArrayLike): an array representing the positions of the
                     element nodes. This is of the shape `(basis_shape,...,2)`
             field (ArrayLike): an array of shape (*basis_shape,...,*fieldshape)
                 representing the field to be interpolated.
@@ -938,11 +933,11 @@ class SpectralElement2D(element.Element2D):
                 if `indices` is None.
         """
         # compute using GLL quadrature
-        pos_matrix, field, jacobian_scale = Field.broadcast_field_compatibility(
-            pos_matrix, field, jacobian_scale
+        pos_field, field, jacobian_scale = Field.broadcast_field_compatibility(
+            pos_field, field, jacobian_scale
         )
 
-        def_grad = self.compute_field_gradient(pos_matrix).coefficients
+        def_grad = self.compute_field_gradient(pos_field).coefficients
         # int (grad phi1 . grad field)
         w = np.einsum(
             "i,j,ij...,ij...->ij...",
@@ -951,7 +946,7 @@ class SpectralElement2D(element.Element2D):
             np.abs(np.linalg.det(def_grad)),
             jacobian_scale.coefficients,
         )
-        # [i,k] L_k'(x_i)
+        # [k,i] L_k'(x_i)
         lag_div = self.lagrange_eval1D(1)
         # [i,j,...,dim] partial_dim field(xi,xj)
 
@@ -976,9 +971,9 @@ class SpectralElement2D(element.Element2D):
         #           + (partial_dim field(xi,xj)) delta_{dim,1} delta_{mi} L_n'(xj) w_{ij}
         # = (partial_0 field(xi,xn)) L_m'(xi)w_{in} + (partial_1 field(xm,xj)) L_n'(xj) w_{mj}
 
-        KF = np.empty(field.basis_shape + field.stack_shape + field.field_shape)
-        KF[...] = np.einsum("in...,im,in...->mn...", grad_field[..., 0], lag_div, w)
-        KF[...] += np.einsum("mj...,jn,mj...->mn...", grad_field[..., 1], lag_div, w)
+        KF = np.einsum(
+            "in...,mi,in...->mn...", grad_field[..., 0], lag_div, w
+        ) + np.einsum("mj...,nj,mj...->mn...", grad_field[..., 1], lag_div, w)
         if indices is None:
             return KF
         return KF[*indices, ...]  # type: ignore

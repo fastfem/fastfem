@@ -20,7 +20,7 @@ def transformed_element(element, transformation):
         Field(
             element.basis_shape(),
             (2,),
-            transformation(element.reference_element_position_matrix().coefficients),
+            transformation(element.reference_element_position_field().coefficients),
         ),
         transformation,
     )
@@ -29,7 +29,7 @@ def transformed_element(element, transformation):
 @pytest.fixture(scope="module")
 def transformed_element_stack(transform_stack, element):
 
-    transformed = transform_stack(element.reference_element_position_matrix())
+    transformed = transform_stack(element.reference_element_position_field())
     ndims = len(transformed.shape) - len(element.basis_shape())
     pts_stack = np.permute_dims(
         transformed, (ndims, ndims + 1) + tuple(range(ndims)) + (-1,)
@@ -56,6 +56,8 @@ def ref_coords_arr(request):
 
 
 _broadcastable_pairs = [
+    (tuple(), tuple()),
+    (tuple(), (2,)),
     ((5,), (5,)),
     ((2, 6), (2, 6)),
     ((2, 4, 3), (2, 4, 3)),
@@ -105,7 +107,7 @@ def broadcastable_shape_triples(broadcastable_shapes):
 
 
 def test_lagrange_poly_coefs1D(element):
-    elem = element[0]
+    elem = element
     elem._lagrange_derivs = dict()
     elem._lagrange_derivs[0] = elem._lagrange_polys
 
@@ -163,29 +165,41 @@ def test_lagrange_poly_coefs1D(element):
 
 
 def test_lagrange_evals1D(element, broadcastable_shapes):
-    elem = element[0]
+    elem = element
 
     for deriv_order in range(0, elem.degree + 1):
         # verify that the lagrange derivatives are evaluated correctly
         P = elem.lagrange_poly1D(deriv_order)
-        test_points = np.linspace(-1, 1, np.prod(broadcastable_shapes[1])).reshape(
-            broadcastable_shapes[1]
-        )
+
+        test_points = np.linspace(
+            -1, 1, np.prod(broadcastable_shapes[1], dtype=int)
+        ).reshape(broadcastable_shapes[1])
         test_indices = (
             np.arange(np.prod(broadcastable_shapes[0])).reshape(broadcastable_shapes[0])
             % P.shape[0]
         )
+        if broadcastable_shapes[0] == tuple():
+            test_indices = 0
 
         eval_pts = elem.lagrange_eval1D(deriv_order, test_indices, test_points)
+        eval_alls = elem.lagrange_eval1D(deriv_order, test_indices, None)
         assert (
             eval_pts.shape == broadcastable_shapes[2]
         ), "Did not broadcast into the right shape!"
+        assert eval_alls.shape == broadcastable_shapes[0] + (
+            elem.num_nodes,
+        ), "Did not broadcast into the right shape!"
+
+        degp1 = elem.degree + 1 - deriv_order  # degree+1 of P
+        Pknots = np.einsum(
+            "ik,jk->ij", P, elem.knots[:, np.newaxis] ** np.arange(degp1)
+        )
+        np.testing.assert_almost_equal(eval_alls, Pknots[test_indices, :])
 
         test_points = np.broadcast_to(test_points, broadcastable_shapes[2])
         test_indices = np.broadcast_to(test_indices, broadcastable_shapes[2])
 
         it = np.nditer(eval_pts, flags=["multi_index"])
-        degp1 = elem.degree + 1 - deriv_order  # degree+1 of P
         for Px in it:
             ind = test_indices[it.multi_index]
             x = test_points[it.multi_index]
@@ -222,7 +236,11 @@ def test_real_to_reference_interior(transformed_element, ref_coords):
     true_pos = transformation(ref_coords)
 
     recover_ref = elem.locate_point(
-        points, true_pos[0], true_pos[1], tol=1e-10, ignore_out_of_bounds=True
+        points.coefficients,
+        true_pos[0],
+        true_pos[1],
+        tol=1e-10,
+        ignore_out_of_bounds=True,
     )
     assert recover_ref[1], (
         "Test with ignore_out_of_bounds flag. Should be True for point being found"
@@ -233,7 +251,11 @@ def test_real_to_reference_interior(transformed_element, ref_coords):
     )
 
     recover_ref = elem.locate_point(
-        points, true_pos[0], true_pos[1], tol=1e-10, ignore_out_of_bounds=False
+        points.coefficients,
+        true_pos[0],
+        true_pos[1],
+        tol=1e-10,
+        ignore_out_of_bounds=False,
     )
     assert recover_ref[1], (
         "Test without ignore_out_of_bounds flag. Should be True for point being found"
@@ -245,7 +267,7 @@ def test_real_to_reference_interior(transformed_element, ref_coords):
 
 
 def test_real_to_reference_degen_elem(element):
-    points = element.reference_element_position_matrix().coefficients
+    points = element.reference_element_position_field().coefficients
     points[..., 0] = np.abs(points[..., 0])
     try:
         element.locate_point(points, 1e-10, 0.3)

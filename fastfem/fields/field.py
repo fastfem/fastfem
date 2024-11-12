@@ -1,6 +1,6 @@
 from dataclasses import dataclass
 import numpy as np
-from numpy.typing import NDArray
+from numpy.typing import ArrayLike, NDArray
 
 import itertools
 
@@ -92,16 +92,32 @@ class Field:
     field_shape: tuple[int, ...]
     coefficients: NDArray
 
-    def __init__(self, basis_shape, field_shape, coefficients):
-        cshape = np.shape(coefficients)
+    def __init__(
+        self,
+        basis_shape: tuple[int, ...],
+        field_shape: tuple[int, ...],
+        coefficients: ArrayLike,
+    ):
+        if not isinstance(coefficients, np.ndarray):
+            coefficients = np.array(coefficients)
+        cshape_orig = np.shape(coefficients)
+        if len(cshape_orig) < len(basis_shape) + len(field_shape):
+            coefficients = coefficients[
+                *(
+                    (np.newaxis,)
+                    * (len(basis_shape) + len(field_shape) - len(cshape_orig))
+                ),
+                ...,
+            ]
+            cshape = np.shape(coefficients)
+        else:
+            cshape = cshape_orig
         bmarker = len(basis_shape)  # where basis_shape ends (excl)
         fmarker = len(cshape) - len(field_shape)  # where f_shape begins (incl)
-        if (
-            fmarker < bmarker
-            or (not _is_broadcastable(basis_shape, cshape[:bmarker]))
-            or (not _is_broadcastable(field_shape, cshape[fmarker:]))
+        if (not _is_broadcastable(basis_shape, cshape[:bmarker])) or (
+            not _is_broadcastable(field_shape, cshape[fmarker:])
         ):
-            raise FieldConstructionError(basis_shape, field_shape, cshape)
+            raise FieldConstructionError(basis_shape, field_shape, cshape_orig)
         object.__setattr__(self, "coefficients", coefficients)
         object.__setattr__(self, "basis_shape", basis_shape)
         object.__setattr__(self, "field_shape", field_shape)
@@ -110,14 +126,14 @@ class Field:
     def __getattr__(self, name):
         if name == "shape":
             return (self.basis_shape, self.stack_shape, self.field_shape)
-        raise AttributeError()
+        raise AttributeError
 
     def broadcast_to_shape(
         self,
         basis_shape: tuple[int, ...],
         stack_shape: tuple[int, ...],
         field_shape: tuple[int, ...],
-    ):
+    ) -> "Field":
         if (
             not _is_broadcastable(basis_shape, self.basis_shape)
             or not _is_broadcastable(stack_shape, self.stack_shape)
@@ -141,13 +157,13 @@ class Field:
         )
 
     @staticmethod
-    def are_broadcastable(*fields):
+    def are_broadcastable(*fields: "Field") -> bool:
         return Field.are_compatible(*fields) and _is_compatible(
             *(field.field_shape for field in fields)
         )
 
     @staticmethod
-    def broadcast_fields_full(*fields):
+    def broadcast_fields_full(*fields: "Field") -> tuple["Field", ...]:
         if Field.are_broadcastable(*fields):
             basis_shape = np.broadcast_shapes(*[field.basis_shape for field in fields])
             stack_shape = np.broadcast_shapes(*[field.stack_shape for field in fields])
@@ -159,7 +175,7 @@ class Field:
         raise FieldShapeError("Cannot broadcast fields with incompatible shapes.")
 
     @staticmethod
-    def are_compatible(*fields):
+    def are_compatible(*fields: "Field") -> bool:
         """Two fields a and b are compatible if they have compatible bases
         (basis_shape equal or at least one of them is size 1 representing a constant)
         and they have broadcastable stack_shapes.
@@ -181,7 +197,7 @@ class Field:
         ) and _is_compatible(*(field.stack_shape for field in fields))
 
     @staticmethod
-    def broadcast_field_compatibility(*fields):
+    def broadcast_field_compatibility(*fields: "Field") -> tuple["Field", ...]:
         if Field.are_compatible(*fields):
             basis_shape = np.broadcast_shapes(*[field.basis_shape for field in fields])
             stack_shape = np.broadcast_shapes(*[field.stack_shape for field in fields])
@@ -191,8 +207,10 @@ class Field:
             )
         raise FieldShapeError("Cannot broadcast fields with incompatible shapes.")
 
-    def __eq__(self, other):
-        if Field.are_broadcastable(self, other):
+    def __eq__(self, other) -> bool:
+        if not Field.are_broadcastable(self, other):
             return False
 
-        return np.array_equiv(*Field.broadcast_fields_full(self, other))
+        return np.array_equiv(
+            *(f.coefficients for f in Field.broadcast_fields_full(self, other))
+        )
