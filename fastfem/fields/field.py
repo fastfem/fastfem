@@ -1,6 +1,8 @@
 from dataclasses import dataclass
 import numpy as np
 from numpy.typing import ArrayLike, NDArray
+import typing
+from typing import Literal
 
 import itertools
 
@@ -69,6 +71,57 @@ class FieldConstructionError(FieldShapeError):
         super().__init__(errmsg)
 
 
+class FieldBasisAccessor:
+    def __init__(self, parent):
+        self.parent = parent
+
+    def __getitem__(self, slices):
+        # do validation
+        basis = np.broadcast_to(0, self.parent.basis_shape)
+        new_basis_shape = basis[slices].shape
+        return Field(
+            new_basis_shape, self.parent.field_shape, self.parent.coefficients[slices]
+        )
+
+
+class FieldStackAccessor:
+    def __init__(self, parent):
+        self.parent = parent
+
+    def __getitem__(self, slices):
+        # do validation
+        stack = np.broadcast_to(0, self.parent.stack_shape)
+        new_stack_shape = stack[slices].shape  # noqa: F841
+        slicepad = (slice(None),) * len(self.parent.basis_shape)
+        if not isinstance(slices, tuple):
+            slices = (slices,)
+        return Field(
+            self.parent.basis_shape,
+            self.parent.field_shape,
+            self.parent.coefficients[*slicepad, *slices],
+        )
+
+
+class FieldElementAccessor:
+    def __init__(self, parent):
+        self.parent = parent
+
+    def __getitem__(self, slices):
+        # do validation
+        element = np.broadcast_to(0, self.parent.field_shape)
+        new_field_shape = element[slices].shape
+        slicepad = (slice(None),) * (
+            len(self.parent.basis_shape) + len(self.parent.stack_shape)
+        )
+        if not isinstance(slices, tuple):
+            slices = (slices,)
+        return Field(
+            self.parent.basis_shape,
+            new_field_shape,
+            self.parent.coefficients[*slicepad, *slices],
+        )
+
+
 @dataclass(eq=False, frozen=True, unsafe_hash=False, init=False)
 class Field:
     """
@@ -118,14 +171,36 @@ class Field:
             not _is_broadcastable(field_shape, cshape[fmarker:])
         ):
             raise FieldConstructionError(basis_shape, field_shape, cshape_orig)
-        object.__setattr__(self, "coefficients", coefficients)
+        stack_shape = cshape[bmarker:fmarker]
+        object.__setattr__(
+            self,
+            "coefficients",
+            np.broadcast_to(coefficients, basis_shape + stack_shape + field_shape),
+        )
         object.__setattr__(self, "basis_shape", basis_shape)
         object.__setattr__(self, "field_shape", field_shape)
-        object.__setattr__(self, "stack_shape", cshape[bmarker:fmarker])
+        object.__setattr__(self, "stack_shape", stack_shape)
+
+    @typing.overload
+    def __getattr__(
+        self, name: Literal["shape"]
+    ) -> tuple[tuple[int, ...], tuple[int, ...], tuple[int, ...]]: ...
+    @typing.overload
+    def __getattr__(self, name: Literal["basis"]) -> FieldBasisAccessor: ...
+    @typing.overload
+    def __getattr__(self, name: Literal["stack"]) -> FieldStackAccessor: ...
+    @typing.overload
+    def __getattr__(self, name: Literal["element"]) -> FieldElementAccessor: ...
 
     def __getattr__(self, name):
         if name == "shape":
             return (self.basis_shape, self.stack_shape, self.field_shape)
+        elif name == "basis":
+            return FieldBasisAccessor(self)
+        elif name == "stack":
+            return FieldStackAccessor(self)
+        elif name == "element":
+            return FieldElementAccessor(self)
         raise AttributeError
 
     def broadcast_to_shape(

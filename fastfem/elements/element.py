@@ -162,6 +162,9 @@ class Element2D(abc.ABC):
                 f"field stack_shape {field.stack_shape} must be compatible with the"
                 f" shapes of X {np.shape(X)} and Y {np.shape(Y)}."
             )
+        field, _ = FieldType.broadcast_field_compatibility(
+            field, FieldType(self.basis_shape(), tuple(), np.array(0))
+        )
         return self._interpolate_field(field, X, Y)
 
     @abc.abstractmethod
@@ -218,6 +221,9 @@ class Element2D(abc.ABC):
         """
         if pos_field is None:
             self._verify_field_compatibilities(field=field)
+            field, _ = FieldType.broadcast_field_compatibility(
+                field, FieldType(self.basis_shape(), tuple(), np.array(0))
+            )
         else:
             self._verify_field_compatibilities(field=field, pos_field=pos_field)
             if pos_field.field_shape != (2,):
@@ -225,6 +231,10 @@ class Element2D(abc.ABC):
                     "pos_field must have field_shape (2,). Found"
                     f" {pos_field.field_shape} instead."
                 )
+            pos_field, field, _ = FieldType.broadcast_field_compatibility(
+                pos_field, field, FieldType(self.basis_shape(), tuple(), np.array(0))
+            )
+
         return self._compute_field_gradient(field, pos_field)
 
     @abc.abstractmethod
@@ -306,6 +316,9 @@ class Element2D(abc.ABC):
                     f"field stack_shape {field.stack_shape} must be compatible with the"
                     f" shapes of X {np.shape(X)} and Y {np.shape(Y)}."
                 )
+            field, _ = FieldType.broadcast_field_compatibility(
+                field, FieldType(self.basis_shape(), tuple(), np.array(0))
+            )
         else:
             self._verify_field_compatibilities(field=field, pos_field=pos_field)
             if not shapes_compatible(
@@ -321,6 +334,9 @@ class Element2D(abc.ABC):
                     "pos_field must have field_shape (2,). Found"
                     f" {pos_field.field_shape} instead."
                 )
+            pos_field, field, _ = FieldType.broadcast_field_compatibility(
+                pos_field, field, FieldType(self.basis_shape(), tuple(), np.array(0))
+            )
 
         return self._interpolate_field_gradient(field, X, Y, pos_field)
 
@@ -402,6 +418,12 @@ class Element2D(abc.ABC):
                 "pos_field must have field_shape (2,). Found"
                 f" {pos_field.field_shape} instead."
             )
+        pos_field, field, jacobian_scale, _ = FieldType.broadcast_field_compatibility(
+            pos_field,
+            field,
+            jacobian_scale,
+            FieldType(self.basis_shape(), tuple(), np.array(0)),
+        )
         return self._integrate_field(pos_field, field, jacobian_scale)
 
     @abc.abstractmethod
@@ -436,7 +458,7 @@ class Element2D(abc.ABC):
         self,
         pos_field: FieldType,
         field: FieldType,
-        indices: colltypes.Sequence[ArrayLike] | None = None,
+        indices: colltypes.Sequence | None = None,
         jacobian_scale: FieldType = FieldType(tuple(), tuple(), 1),
     ) -> NDArray:
         """
@@ -473,6 +495,12 @@ class Element2D(abc.ABC):
                 "pos_field must have field_shape (2,). Found"
                 f" {pos_field.field_shape} instead."
             )
+        pos_field, field, jacobian_scale, _ = FieldType.broadcast_field_compatibility(
+            pos_field,
+            field,
+            jacobian_scale,
+            FieldType(self.basis_shape(), tuple(), np.array(0)),
+        )
         return self._integrate_basis_times_field(
             pos_field, field, indices, jacobian_scale
         )
@@ -482,7 +510,7 @@ class Element2D(abc.ABC):
         self,
         pos_field: FieldType,
         field: FieldType,
-        indices: colltypes.Sequence[ArrayLike] | None = None,
+        indices: colltypes.Sequence | None = None,
         jacobian_scale: FieldType = FieldType(tuple(), tuple(), 1),
     ) -> NDArray:
         """
@@ -516,7 +544,7 @@ class Element2D(abc.ABC):
     def mass_matrix(
         self,
         pos_field: FieldType,
-        indices: colltypes.Sequence[np.ndarray] | None = None,
+        indices: colltypes.Sequence | None = None,
         jacobian_scale: FieldType = FieldType(tuple(), tuple(), 1),
     ) -> NDArray:
         """
@@ -554,12 +582,17 @@ class Element2D(abc.ABC):
                 "pos_field must have field_shape (2,). Found"
                 f" {pos_field.field_shape} instead."
             )
+        pos_field, jacobian_scale, _ = FieldType.broadcast_field_compatibility(
+            pos_field,
+            jacobian_scale,
+            FieldType(self.basis_shape(), tuple(), np.array(0)),
+        )
         return self._mass_matrix(pos_field, indices, jacobian_scale)
 
     def _mass_matrix(
         self,
         pos_field: FieldType,
-        indices: colltypes.Sequence[np.ndarray] | None = None,
+        indices: colltypes.Sequence | None = None,
         jacobian_scale: FieldType = FieldType(tuple(), tuple(), 1),
     ) -> NDArray:
         """
@@ -600,13 +633,13 @@ class Element2D(abc.ABC):
             None if indices is None else indices[: len(self.basis_shape())],
             jacobian_scale,
         )
-        return mat if indices is None else mat[*indices]
+        return mat if indices is None else mat[*indices[len(self.basis_shape()) :]]
 
     def integrate_grad_basis_dot_field(
         self,
         pos_field: FieldType,
         field: FieldType,
-        indices: colltypes.Sequence[ArrayLike] | None = None,
+        indices: colltypes.Sequence | None = None,
         jacobian_scale: FieldType = FieldType(tuple(), tuple(), 1),
     ) -> NDArray:
         """
@@ -641,6 +674,12 @@ class Element2D(abc.ABC):
                 "pos_field must have field_shape (2,). Found"
                 f" {pos_field.field_shape} instead."
             )
+        pos_field, field, jacobian_scale, _ = FieldType.broadcast_field_compatibility(
+            pos_field,
+            field,
+            jacobian_scale,
+            FieldType(self.basis_shape(), tuple(), np.array(0)),
+        )
         return self._integrate_grad_basis_dot_field(
             pos_field, field, indices, jacobian_scale
         )
@@ -650,7 +689,7 @@ class Element2D(abc.ABC):
         self,
         pos_field: FieldType,
         field: FieldType,
-        indices: colltypes.Sequence[ArrayLike] | None = None,
+        indices: colltypes.Sequence | None = None,
         jacobian_scale: FieldType = FieldType(tuple(), tuple(), 1),
     ) -> NDArray:
         """
@@ -683,7 +722,7 @@ class Element2D(abc.ABC):
         self,
         pos_field: FieldType,
         field: FieldType,
-        indices: colltypes.Sequence[ArrayLike] | None = None,
+        indices: colltypes.Sequence | None = None,
         jacobian_scale: FieldType = FieldType(tuple(), tuple(), 1),
     ) -> NDArray:
         """
@@ -715,6 +754,12 @@ class Element2D(abc.ABC):
                 "pos_field must have field_shape (2,). Found"
                 f" {pos_field.field_shape} instead."
             )
+        pos_field, field, jacobian_scale, _ = FieldType.broadcast_field_compatibility(
+            pos_field,
+            field,
+            jacobian_scale,
+            FieldType(self.basis_shape(), tuple(), np.array(0)),
+        )
         return self._integrate_grad_basis_dot_grad_field(
             pos_field, field, indices, jacobian_scale
         )
@@ -723,7 +768,7 @@ class Element2D(abc.ABC):
         self,
         pos_field: FieldType,
         field: FieldType,
-        indices: colltypes.Sequence[ArrayLike] | None = None,
+        indices: colltypes.Sequence | None = None,
         jacobian_scale: FieldType = FieldType(tuple(), tuple(), 1),
     ) -> NDArray:
         """

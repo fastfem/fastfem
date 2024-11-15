@@ -267,7 +267,7 @@ def test_real_to_reference_interior(transformed_element, ref_coords):
 
 
 def test_real_to_reference_degen_elem(element):
-    points = element.reference_element_position_field().coefficients
+    points = element.reference_element_position_field().coefficients.copy()
     points[..., 0] = np.abs(points[..., 0])
     try:
         element.locate_point(points, 1e-10, 0.3)

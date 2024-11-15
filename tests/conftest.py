@@ -41,15 +41,16 @@ _SHAPES_COMPARE_TRIPLES: list[
 ] = [(a, b, c, are_shapes_compatible(a, b, c)) for a, b, c in _SHAPES_COMPARE_TRIPLES_]
 
 
-#probably a better way of doing this,
+# probably a better way of doing this,
 # but we need to create a creator of generators, since one may call
 # "for ... in itergen" multiple times.
 class _itergen:
     def __init__(self, genfunc):
         self.genfunc = genfunc
-    
+
     def __iter__(self):
         return self.genfunc()
+
 
 @pytest.fixture
 def comparison_two_shapes():

@@ -638,8 +638,6 @@ class SpectralElement2D(element.Element2D):
             NDArray: an array representing the gradient of the field evaluated
                 at each point.
         """
-        if pos_field is not None:
-            field, pos_field = Field.broadcast_field_compatibility(field, pos_field)
         field_pad = (np.newaxis,) * len(field.field_shape)
         X = X[..., *field_pad]
         Y = Y[..., *field_pad]
@@ -693,9 +691,6 @@ class SpectralElement2D(element.Element2D):
         Returns:
             NDArray: The resultant integral, an array of shape `(...,*fieldshape)`.
         """
-        pos_field, field, jacobian_scale = Field.broadcast_field_compatibility(
-            pos_field, field, jacobian_scale
-        )
         field_pad = (np.newaxis,) * len(field.field_shape)
         Jw = np.einsum(
             "i,j,ij...,ij...->ij...",
@@ -739,9 +734,6 @@ class SpectralElement2D(element.Element2D):
                 `(indices.shape,...,*fieldshape)`, or `(*basis_shape,...,*fieldshape)`
                 if `indices` is None.
         """
-        pos_field, field, jacobian_scale = Field.broadcast_field_compatibility(
-            pos_field, field, jacobian_scale
-        )
         field_pad = (np.newaxis,) * len(field.field_shape)
         Jw = np.einsum(
             "i,j,ij...,ij...->ij...",
@@ -794,9 +786,6 @@ class SpectralElement2D(element.Element2D):
 
         # weights [i,j] times jacobian
 
-        pos_field, jacobian_scale = Field.broadcast_field_compatibility(
-            pos_field, jacobian_scale
-        )
         Jw = np.einsum(
             "i,j,ij...,ij...->ij...",
             self.weights,
@@ -857,9 +846,6 @@ class SpectralElement2D(element.Element2D):
                 `(indices.shape,...,*fieldshape)`, or `(*basis_shape,...,*fieldshape)`
                 if `indices` is None.
         """
-        pos_field, field, jacobian_scale = Field.broadcast_field_compatibility(
-            pos_field, field, jacobian_scale
-        )
 
         # last index is contracted
         field_pad = (np.newaxis,) * (len(field.field_shape) - 1)
@@ -933,9 +919,6 @@ class SpectralElement2D(element.Element2D):
                 if `indices` is None.
         """
         # compute using GLL quadrature
-        pos_field, field, jacobian_scale = Field.broadcast_field_compatibility(
-            pos_field, field, jacobian_scale
-        )
 
         def_grad = self.compute_field_gradient(pos_field).coefficients
         # int (grad phi1 . grad field)

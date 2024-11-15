@@ -2,7 +2,8 @@ import pytest
 import numpy as np
 
 
-from fastfem.elements import spectral_element
+from fastfem.elements.spectral_element import SpectralElement2D
+from fastfem.elements.linear_simplex2d import LinearSimplex2D
 from fastfem.elements.element import Element2D
 
 from fastfem.fields.field import Field
@@ -62,10 +63,19 @@ elements_for_field_gradient_finitediff_test = set()
 elements_for_grad_basis_dot_grad_field_test = set()
 elements_for_ref_element_def_grad_is_identity_test = set()
 
+# register linearsimplex2D
+elements_to_test["linearsimplex"] = LinearSimplex2D()
+element_test_localcoords["linearsimplex"] = np.array(
+    [[0, 0], [1, 0], [0, 1], [0.5, 0.5], [0.25, 0.25]]
+)
+elements_for_field_gradient_finitediff_test.add("linearsimplex")
+elements_for_grad_basis_dot_grad_field_test.add("linearsimplex")
+elements_for_ref_element_def_grad_is_identity_test.add("linearsimplex")
+
 # register spectral elements of different orders
 for i in [3, 4, 5]:
     testname = f"spectral{i}"
-    elements_to_test[testname] = spectral_element.SpectralElement2D(i)
+    elements_to_test[testname] = SpectralElement2D(i)
     elements_for_field_gradient_finitediff_test.add(testname)
     elements_for_grad_basis_dot_grad_field_test.add(testname)
     elements_for_ref_element_def_grad_is_identity_test.add(testname)
@@ -73,6 +83,7 @@ for i in [3, 4, 5]:
     test_pts[:, :, 0] = np.linspace(-1, 1, 2 * i)[:, np.newaxis]
     test_pts[:, :, 1] = np.linspace(-1, 1, 2 * i)[np.newaxis, :]
     element_test_localcoords[testname] = test_pts
+
 # ======================================================================================
 
 
@@ -211,8 +222,8 @@ def test_compute_field_gradient(elem: str):
         - element.interpolate_field(basis_field, x_padded, y_padded - eps)
     ) / (2 * eps)
     np.testing.assert_allclose(
-        grad_at_pts,
-        np.stack((grad_finite_diff_x, grad_finite_diff_y), axis=-1),
+        grad_at_pts - np.stack((grad_finite_diff_x, grad_finite_diff_y), axis=-1),
+        0,
         atol=(eps**2) * 1e2,  # central diff has error O(h^2). give a constant factor
     )
 
@@ -383,4 +394,4 @@ def test_incompatible_fields_throw(element: Element2D):
     with pytest.raises(ValueError):  # posfield shape != (2,)
         element.mass_matrix(field_stack)
     with pytest.raises(ValueError):  # jac incompatible
-        element.mass_matrix(pos_field, jacobian_scale=field_stack_incomp)
+        element.mass_matrix(pos_stack, jacobian_scale=field_stack_incomp)
