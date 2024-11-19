@@ -39,7 +39,7 @@ class Element2D(abc.ABC):
         Returns:
             _type_: _description_
         """
-        warnings.warn(f"Element developer message: {message}")  # pragma: no cover
+        warnings.warn(f"Element developer message: {message}")
 
     @abc.abstractmethod
     def basis_shape(self) -> tuple[int, ...]:
@@ -54,7 +54,7 @@ class Element2D(abc.ABC):
                 to the basis coefficients. A scalar field `f`, given as an array is
                 expected to have shape `f.shape == element.basis_shape()`.
         """
-        raise NotImplementedError  # pragma: no cover
+        raise NotImplementedError
 
     # this emulates a member class definition
     def Field(
@@ -120,7 +120,7 @@ class Element2D(abc.ABC):
             Field: A field of shape `(basis_shape(),(),(2,))` corresponding to the
             position field.
         """
-        raise NotImplementedError  # pragma: no cover
+        raise NotImplementedError
 
     def _verify_field_compatibilities(
         self, *fields: FieldType, **named_fields: FieldType
@@ -188,7 +188,7 @@ class Element2D(abc.ABC):
         Returns:
             NDArray: The interpolated values `field(X,Y)`
         """
-        raise NotImplementedError  # pragma: no cover
+        raise NotImplementedError
 
     def compute_field_gradient(
         self,
@@ -267,7 +267,7 @@ class Element2D(abc.ABC):
         Returns:
             Field: The field of the gradient.
         """
-        raise NotImplementedError  # pragma: no cover
+        raise NotImplementedError
 
     def interpolate_field_gradient(
         self,
@@ -452,7 +452,7 @@ class Element2D(abc.ABC):
         Returns:
             NDArray: The resultant integral, an array of shape `(...,*fieldshape)`.
         """
-        raise NotImplementedError  # pragma: no cover
+        raise NotImplementedError
 
     def integrate_basis_times_field(
         self,
@@ -539,7 +539,7 @@ class Element2D(abc.ABC):
                 `(indices.shape,...,*fieldshape)`, or `(*basis_shape,...,*fieldshape)`
                 if `indices` is None.
         """
-        raise NotImplementedError  # pragma: no cover
+        raise NotImplementedError
 
     def mass_matrix(
         self,
@@ -716,7 +716,7 @@ class Element2D(abc.ABC):
                 `(indices.shape,...,*fieldshape)`, or `(*basis_shape,...,*fieldshape)`
                 if `indices` is None.
         """
-        raise NotImplementedError  # pragma: no cover
+        raise NotImplementedError
 
     def integrate_grad_basis_dot_grad_field(
         self,

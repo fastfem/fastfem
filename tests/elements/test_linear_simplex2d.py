@@ -3,6 +3,11 @@ from numpy.typing import ArrayLike
 import numpy as np
 import pytest
 
+import types
+
+from fastfem.elements.linear_simplex2d import LinearSimplex2D
+from fastfem.fields.field import Field
+
 
 def meshquad(X, Y, F):
     """
@@ -51,60 +56,97 @@ def _analytic_integrate_reftri(powx: int, powy: int) -> float:
     return factorial(powx) * factorial(powy) / factorial(powx + powy + 2)
 
 
-@pytest.fixture
+@pytest.fixture(scope="module")
+def element():
+    return LinearSimplex2D()
+
+
+@pytest.fixture(scope="module")
+def transformed_element(element, transformation):
+    return (
+        element,
+        Field(
+            element.basis_shape(),
+            (2,),
+            transformation(element.reference_element_position_field().coefficients),
+        ),
+        transformation,
+    )
+
+
+@pytest.fixture(scope="session")
 def triangle_quadrature():
-    class TriangleQuadratureRule:
+
+    reference_rules = dict()
+
+    class TriangleQuadratureRuleBuilder:
         """A triangular quadrature rule tuned to a specific
         degree of exactness.
         """
 
-        def __init__(
+        def __call__(
             self, exactness: int, tribounds: ArrayLike = [[0, 0], [1, 0], [0, 1]]
         ):
             if not isinstance(tribounds, np.ndarray):
                 tribounds = np.array(tribounds)
-            self.exactness = exactness
-            self.tribounds = tribounds
 
-            # num polys: count (a,b) for which a+b <= exactness
-            # for simplicity of solving for weights, we use a
-            # 2d newton-coates variant, where our "equally-spaced"
-            # nodes are given as
-            def line(y, n):
-                pts = np.empty((n, 2))
-                pts[:, 0] = np.linspace(0, 1 - y, n)
-                pts[:, 1] = y
-                return pts
+            if exactness not in reference_rules:
 
-            meshpts = np.concatenate(
-                [line(1 - n / (exactness + 1), n + 1) for n in range(exactness + 1)],
-                axis=0,
-            )
-            integrals = np.empty(meshpts.shape[0])
-            coef_evals = np.empty((meshpts.shape[0], meshpts.shape[0]))
+                # num polys: count (a,b) for which a+b <= exactness
+                # for simplicity of solving for weights, we use a
+                # 2d newton-coates variant, where our "equally-spaced"
+                # nodes are given as
+                def line(y, n):
+                    pts = np.empty((n, 2))
+                    pts[:, 0] = np.linspace(0, 1 - y, n)
+                    pts[:, 1] = y
+                    return pts
 
-            iterm: int = 0
-            for powx in range(exactness + 1):
-                for powy in range(exactness - powx + 1):
-                    coef_evals[iterm, :] = meshpts[:, 0] ** powx * meshpts[:, 1] ** powy
-                    integrals[iterm] = _analytic_integrate_reftri(powx, powy)
-                    iterm += 1
+                meshpts = np.concatenate(
+                    [
+                        line(1 - n / (exactness + 1), n + 1)
+                        for n in range(exactness + 1)
+                    ],
+                    axis=0,
+                )
+                integrals = np.empty(meshpts.shape[0])
+                coef_evals = np.empty((meshpts.shape[0], meshpts.shape[0]))
 
-            # CE_{ij} w_j = I_i
-            # where CE_{ij} = f_i(x_j),  I_i = int(f_i)
-            weights = np.linalg.solve(coef_evals, integrals)
+                iterm: int = 0
+                for powx in range(exactness + 1):
+                    for powy in range(exactness - powx + 1):
+                        coef_evals[iterm, :] = (
+                            meshpts[:, 0] ** powx * meshpts[:, 1] ** powy
+                        )
+                        integrals[iterm] = _analytic_integrate_reftri(powx, powy)
+                        iterm += 1
+
+                # CE_{ij} w_j = I_i
+                # where CE_{ij} = f_i(x_j),  I_i = int(f_i)
+                weights = np.linalg.solve(coef_evals, integrals)
+                reference_rules[exactness] = types.SimpleNamespace(
+                    weights=weights, knots=meshpts
+                )
 
             # we have the reference element values. we want quadratures on tribounds
             affine_shift = tribounds[0, :]
             affine_linT = tribounds[1:, :] - tribounds[0, :]
 
-            self.weights = weights * abs(np.linalg.det(affine_linT))
-            self.knots = affine_shift + np.einsum("ij,...i->...j", affine_linT, meshpts)
+            weights = reference_rules[exactness].weights * abs(
+                np.linalg.det(affine_linT)
+            )
+            knots = affine_shift + np.einsum(
+                "ij,...i->...j", affine_linT, reference_rules[exactness].knots
+            )
 
-    return TriangleQuadratureRule
+            return types.SimpleNamespace(
+                weights=weights, knots=knots, exactness=exactness, tribounds=tribounds
+            )
+
+    return TriangleQuadratureRuleBuilder()
 
 
-# @pytest.mark.skip
+@pytest.mark.skip
 def test_integrate_reftri(triangle_quadrature):
 
     # this is used to do midpoint rule on triangles
@@ -140,8 +182,6 @@ def test_integrate_reftri(triangle_quadrature):
 
     midpoints = np.mean(reftri_mesh, axis=1)
 
-    quads = dict()
-
     for powx in range(4):
         for powy in range(4):
             res = _analytic_integrate_reftri(powx, powy)
@@ -159,15 +199,144 @@ def test_integrate_reftri(triangle_quadrature):
                 analytic, rel=1e-5
             ), f"Failed _analytic_integrate_reftri({powx},{powy})"
             for exactdeg in range(powx + powy, 10):
-                if exactdeg not in quads:
-                    quads[exactdeg] = triangle_quadrature(exactdeg)
+                quad_rule = triangle_quadrature(exactdeg)
                 quad_result = np.sum(
-                    quads[exactdeg].weights
-                    * (
-                        quads[exactdeg].knots[:, 0] ** powx
-                        * quads[exactdeg].knots[:, 1] ** powy
-                    )
+                    quad_rule.weights
+                    * (quad_rule.knots[:, 0] ** powx * quad_rule.knots[:, 1] ** powy)
                 )
                 assert quad_result == pytest.approx(
                     res, rel=1e-9
                 ), f"Failed exactness for x**{powx} * y**{powy} for DOE {exactdeg}."
+
+
+def test_interpolate_field(element):
+    field = element.basis_fields()
+    constfield = Field(tuple(), tuple(), 3)
+    for x, y in [(0, 0), (1, 0), (0, 1), (0.5, 0.5), (0.25, 0.25)]:
+        field_outs = np.array([1 - x - y, x, y])
+        np.testing.assert_allclose(element.interpolate_field(field, x, y), field_outs)
+
+        assert element.interpolate_field(constfield, x, y) == pytest.approx(
+            constfield.coefficients
+        )
+
+
+def test_integrate_field(transformed_element, triangle_quadrature):
+    element, pts, transform = transformed_element
+    quad = triangle_quadrature(3, tribounds=pts.coefficients)
+    ref_quad = triangle_quadrature(3)
+
+    field = element.basis_fields()
+    jac_scale = Field(
+        element.basis_shape(), tuple(), field.coefficients[..., np.newaxis]
+    )
+    result = element.integrate_field(pts, field, jac_scale)
+
+    field_quad = element.interpolate_field(
+        field,
+        ref_quad.knots[:, 0, np.newaxis, np.newaxis],
+        ref_quad.knots[:, 1, np.newaxis, np.newaxis],
+    )
+    jac_quad = element.interpolate_field(
+        jac_scale,
+        ref_quad.knots[:, 0, np.newaxis, np.newaxis],
+        ref_quad.knots[:, 1, np.newaxis, np.newaxis],
+    )
+
+    quad_result = np.sum(
+        quad.weights[:, np.newaxis, np.newaxis] * field_quad * jac_quad, axis=0
+    )
+
+    np.testing.assert_allclose(result, quad_result, atol=1e-10)
+
+
+def test_integrate_basis_times_field(transformed_element, triangle_quadrature):
+    element, pts, transform = transformed_element
+    quad = triangle_quadrature(4, tribounds=pts.coefficients)
+    ref_quad = triangle_quadrature(4)
+
+    field = element.basis_fields()
+    jac_scale = Field(
+        element.basis_shape(), tuple(), field.coefficients[..., np.newaxis]
+    )
+    result = element.integrate_basis_times_field(pts, field, None, jac_scale)
+
+    field_quad = element.interpolate_field(
+        field,
+        ref_quad.knots[:, 0, np.newaxis, np.newaxis, np.newaxis],
+        ref_quad.knots[:, 1, np.newaxis, np.newaxis, np.newaxis],
+    )
+    jac_quad = element.interpolate_field(
+        jac_scale,
+        ref_quad.knots[:, 0, np.newaxis, np.newaxis, np.newaxis],
+        ref_quad.knots[:, 1, np.newaxis, np.newaxis, np.newaxis],
+    )
+    basis_field = Field(
+        element.basis_shape(), tuple(), field.coefficients[..., np.newaxis, np.newaxis]
+    )
+    basis_quad = element.interpolate_field(
+        basis_field,
+        ref_quad.knots[:, 0, np.newaxis, np.newaxis, np.newaxis],
+        ref_quad.knots[:, 1, np.newaxis, np.newaxis, np.newaxis],
+    )
+
+    quad_result = np.sum(
+        quad.weights[:, np.newaxis, np.newaxis, np.newaxis]
+        * field_quad
+        * jac_quad
+        * basis_quad,
+        axis=0,
+    )
+
+    np.testing.assert_allclose(result, quad_result, atol=1e-10)
+
+
+def test_integrate_grad_basis_dot_field(transformed_element, triangle_quadrature):
+    element, pts, transform = transformed_element
+    quad = triangle_quadrature(4, tribounds=pts.coefficients)
+    ref_quad = triangle_quadrature(4)
+
+    field = element.basis_fields()
+    jac_scale = Field(
+        element.basis_shape(), tuple(), field.coefficients[..., np.newaxis]
+    )
+    basis_field = Field(
+        element.basis_shape(), tuple(), field.coefficients[..., np.newaxis, np.newaxis]
+    )
+    grad_basis = element.compute_field_gradient(basis_field, pts)
+    basis_quad = element.interpolate_field(
+        grad_basis,
+        ref_quad.knots[:, 0, np.newaxis, np.newaxis, np.newaxis],
+        ref_quad.knots[:, 1, np.newaxis, np.newaxis, np.newaxis],
+    )
+    for eind in range(2):
+        efield = Field(field.basis_shape, (2,), field.coefficients[..., np.newaxis])
+
+        result = element.integrate_grad_basis_dot_field(pts, efield, None, jac_scale)
+
+        field_quad = element.interpolate_field(
+            efield,
+            ref_quad.knots[:, 0, np.newaxis, np.newaxis, np.newaxis],
+            ref_quad.knots[:, 1, np.newaxis, np.newaxis, np.newaxis],
+        )
+        jac_quad = element.interpolate_field(
+            jac_scale,
+            ref_quad.knots[:, 0, np.newaxis, np.newaxis, np.newaxis],
+            ref_quad.knots[:, 1, np.newaxis, np.newaxis, np.newaxis],
+        )
+
+        quad_result = np.sum(
+            quad.weights[:, np.newaxis, np.newaxis, np.newaxis]
+            * jac_quad
+            * np.einsum("...i,...i->...", field_quad, basis_quad),
+            axis=0,
+        )
+
+        np.testing.assert_allclose(result, quad_result, atol=1e-10)
+
+
+def test_field_gradient_const(element):
+    constfield = Field(tuple(), tuple(), 3)
+    np.testing.assert_allclose(
+        element._compute_field_gradient(constfield).coefficients, 0, atol=1e-10
+    )

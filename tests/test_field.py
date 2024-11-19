@@ -60,7 +60,8 @@ def shapes_small():
 def test_field_construction():
     # attr should fail for other things
     with pytest.raises(AttributeError):
-        field.Field(tuple(), tuple(), 1)._shape
+        # this should fail
+        field.Field(tuple(), tuple(), 1)._shape  # pyright: ignore
     for basis_shape in shapes_small():
         for field_shape in shapes_small():
             f = field.Field(
@@ -184,3 +185,39 @@ def test_field_broadcast_full_on_doubles(comparison_two_shapes):
                 assert fa != fb
                 with pytest.raises(field.FieldShapeError):
                     field.Field.broadcast_fields_full(fa, fb)
+
+
+def test_field_accessors():
+
+    def random_accessors(n, base_shape):
+        def rand_symbol(dimsize):
+            if np.random.rand() < 0.5 and dimsize > 0:
+                return np.random.randint(dimsize)
+            return slice(None)
+
+        shapesize = len(base_shape)
+        if shapesize > 0:
+            for _ in range(n):
+                k = np.random.randint(shapesize)
+                yield tuple(rand_symbol(base_shape[i]) for i in range(k))
+
+    for a in shapes_small():
+        for b in shapes_small():
+            for c in shapes_small():
+                f = field.Field(a, c, np.random.rand(*(a + b + c)))
+                if len(f.coefficients.shape) == 0:
+                    continue
+                for amod in random_accessors(5, a):
+                    np.testing.assert_allclose(
+                        f.basis[*amod].coefficients, f.coefficients[*amod]
+                    )
+                slicepad = tuple(slice(None) for _ in a)
+                for bmod in random_accessors(5, b):
+                    np.testing.assert_allclose(
+                        f.stack[*bmod].coefficients, f.coefficients[*slicepad, *bmod]
+                    )
+                slicepad = tuple(slice(None) for _ in a + b)
+                for cmod in random_accessors(5, c):
+                    np.testing.assert_allclose(
+                        f.element[*cmod].coefficients, f.coefficients[*slicepad, *cmod]
+                    )

@@ -12,19 +12,6 @@ class LinearSimplex2D(Element2D):
         return Field((3,), (2,), np.array([[0, 0], [1, 0], [0, 1]]))
 
     def _interpolate_field(self, field, X, Y):
-
-        if (
-            field.basis_shape == tuple()
-            or len(field.coefficients.shape) == 0
-            or field.coefficients.shape[0] == 1
-        ):  # we have a constant function.
-            stackshape = np.broadcast_shapes(field.stack_shape, X.shape, Y.shape)
-            res = field.coefficients[
-                *(0 for _ in field.basis_shape), ...
-            ]  # kill basis axes
-            broadcast_pad = (np.newaxis,) * (len(stackshape) - len(field.stack_shape))
-            return res[*broadcast_pad, ...]
-
         field_pad = (np.newaxis,) * len(field.field_shape)
         X = X[..., *field_pad]
         Y = Y[..., *field_pad]
@@ -67,9 +54,11 @@ class LinearSimplex2D(Element2D):
         fieldpad = (np.newaxis,) * len(field.field_shape)
         return np.einsum(
             "...,ij,i...,j...->...",
-            np.linalg.det(self._compute_field_gradient(pos_field).coefficients)[
-                ..., *fieldpad
-            ],
+            np.abs(
+                np.linalg.det(self._compute_field_gradient(pos_field).coefficients)[
+                    ..., *fieldpad
+                ]
+            ),
             coefs,
             field.coefficients,
             jacobian_scale.coefficients[..., *fieldpad],
@@ -91,9 +80,11 @@ class LinearSimplex2D(Element2D):
         fieldpad = (np.newaxis,) * len(field.field_shape)
         res = np.einsum(
             "...,kij,i...,j...->k...",
-            np.linalg.det(self._compute_field_gradient(pos_field).coefficients)[
-                ..., *fieldpad
-            ],
+            np.abs(
+                np.linalg.det(self._compute_field_gradient(pos_field).coefficients)[
+                    ..., *fieldpad
+                ]
+            ),
             coefs,
             field.coefficients,
             jacobian_scale.coefficients[..., *fieldpad],
@@ -107,10 +98,14 @@ class LinearSimplex2D(Element2D):
         basis_diff_coefs = np.array([[-1, -1], [1, 0], [0, 1]])
         defgrad = self._compute_field_gradient(pos_field)
         dginv = np.linalg.inv(defgrad.coefficients)
-        fieldpad = (np.newaxis,) * len(field.field_shape)
+
+        # pad to field-shape, excluding last axis, which is dotted (contracted)
+        # fieldpad = (np.newaxis,) * (len(field.field_shape) - 1)
         basis_times_field = np.einsum(
             "...,kl,...lg,j...g->jk...",
-            np.linalg.det(defgrad.coefficients)[..., *fieldpad],
+            # exclude jacobian, since we are delegating to integrate_field subroutine.
+            # np.abs(np.linalg.det(defgrad.coefficients)[..., *fieldpad]),
+            1,
             basis_diff_coefs,
             dginv,
             field.coefficients,
@@ -120,6 +115,3 @@ class LinearSimplex2D(Element2D):
             Field((3,), field.field_shape[:-1], basis_times_field),
             jacobian_scale,
         )
-
-
-LinearSimplex2D()
