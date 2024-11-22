@@ -1,10 +1,14 @@
+import numpy as np
+
 from fastfem.elements.element import Element2D
 from fastfem.fields.field import Field
 
-import numpy as np
-
 
 class LinearSimplex2D(Element2D):
+    """A triangular isparametric element with a 3-dimensional shape function space -
+    one for each vertex.
+    """
+
     def basis_shape(self):
         return (3,)
 

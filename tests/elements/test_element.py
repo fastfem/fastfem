@@ -1,13 +1,10 @@
-import pytest
 import numpy as np
+import pytest
 
-
-from fastfem.elements.spectral_element import SpectralElement2D
-from fastfem.elements.linear_simplex2d import LinearSimplex2D
 from fastfem.elements.element import Element2D
-
+from fastfem.elements.linear_simplex2d import LinearSimplex2D
+from fastfem.elements.spectral_element import SpectralElement2D
 from fastfem.fields.field import Field
-
 
 # ======================================================================================
 #                                  Adding elements

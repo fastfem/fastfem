@@ -1,5 +1,5 @@
-import pytest
 import numpy as np
+import pytest
 
 _SHAPES_COMPARE_: list[tuple[tuple[int, ...], tuple[int, ...]]] = [
     (tuple(), tuple()),

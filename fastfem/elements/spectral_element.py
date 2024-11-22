@@ -1,13 +1,11 @@
-import numpy as np
-import fastfem.elements.element as element
-
-
-from numpy.typing import ArrayLike, NDArray
+import collections.abc as colltypes
 import typing
 
+import numpy as np
 import numpy.typing
-import collections.abc as colltypes
+from numpy.typing import ArrayLike, NDArray
 
+import fastfem.elements.element as element
 from fastfem.fields.field import Field
 
 

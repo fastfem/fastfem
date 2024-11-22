@@ -1,13 +1,12 @@
 import abc
-import numpy as np
-from fastfem.fields.field import (
-    Field as FieldType,
-    _is_compatible as shapes_compatible,
-)
-
-import warnings
 import collections.abc as colltypes
-from numpy.typing import NDArray, ArrayLike
+import warnings
+
+import numpy as np
+from numpy.typing import ArrayLike, NDArray
+
+from fastfem.fields.field import Field as FieldType
+from fastfem.fields.field import _is_compatible as shapes_compatible
 
 
 class Element2D(abc.ABC):

@@ -1,9 +1,9 @@
+import types
 from math import factorial
-from numpy.typing import ArrayLike
+
 import numpy as np
 import pytest
-
-import types
+from numpy.typing import ArrayLike
 
 from fastfem.elements.linear_simplex2d import LinearSimplex2D
 from fastfem.fields.field import Field

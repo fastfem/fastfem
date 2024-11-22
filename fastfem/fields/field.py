@@ -1,10 +1,10 @@
-from dataclasses import dataclass
-import numpy as np
-from numpy.typing import ArrayLike, NDArray
+import itertools
 import typing
+from dataclasses import dataclass
 from typing import Literal
 
-import itertools
+import numpy as np
+from numpy.typing import ArrayLike, NDArray
 
 
 def _is_broadcastable(base: tuple[int, ...], *shapes: tuple[int, ...]) -> bool:
@@ -72,6 +72,11 @@ class FieldConstructionError(FieldShapeError):
 
 
 class FieldBasisAccessor:
+    """This class is the type returned in the Field __get_attr__ for basis access.
+    The sole purpose of this class is to provide the syntax for basis-targeted slicing
+    in the same format as numpy.
+    """
+
     def __init__(self, parent):
         self.parent = parent
 
@@ -85,6 +90,11 @@ class FieldBasisAccessor:
 
 
 class FieldStackAccessor:
+    """This class is the type returned in the Field __get_attr__ for stack access.
+    The sole purpose of this class is to provide the syntax for stack-targeted slicing
+    in the same format as numpy.
+    """
+
     def __init__(self, parent):
         self.parent = parent
 
@@ -103,6 +113,12 @@ class FieldStackAccessor:
 
 
 class FieldElementAccessor:
+    """This class is the type returned in the Field __get_attr__ for field-element
+    access.
+    The sole purpose of this class is to provide the syntax for field-targeted slicing
+    in the same format as numpy.
+    """
+
     def __init__(self, parent):
         self.parent = parent
 
@@ -137,7 +153,7 @@ class Field:
     - `field_shape` - The shape of the field. These axes represent the pointwise,
             per-element tensor index.
 
-    The shape of `coefficients` will be `(*basis_shape,*stack_shape,*field_shape)`
+    The shape of `coefficients` will be `(*basis_shape,*stack_shape,*field_shape)`.
     """
 
     basis_shape: tuple[int, ...]
@@ -190,7 +206,7 @@ class Field:
     @typing.overload
     def __getattr__(self, name: Literal["stack"]) -> FieldStackAccessor: ...
     @typing.overload
-    def __getattr__(self, name: Literal["element"]) -> FieldElementAccessor: ...
+    def __getattr__(self, name: Literal["tensor"]) -> FieldElementAccessor: ...
 
     def __getattr__(self, name):
         if name == "shape":
@@ -199,7 +215,7 @@ class Field:
             return FieldBasisAccessor(self)
         elif name == "stack":
             return FieldStackAccessor(self)
-        elif name == "element":
+        elif name == "tensor":
             return FieldElementAccessor(self)
         raise AttributeError
 

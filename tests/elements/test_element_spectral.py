@@ -1,6 +1,7 @@
 from typing import Callable
-import pytest
+
 import numpy as np
+import pytest
 
 from fastfem.elements import spectral_element
 from fastfem.fields.field import Field

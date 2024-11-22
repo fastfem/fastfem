@@ -1,7 +1,7 @@
-import fastfem.fields.field as field
 import numpy as np
-
 import pytest
+
+import fastfem.fields.field as field
 
 
 def shapes_generator(
@@ -219,5 +219,5 @@ def test_field_accessors():
                 slicepad = tuple(slice(None) for _ in a + b)
                 for cmod in random_accessors(5, c):
                     np.testing.assert_allclose(
-                        f.element[*cmod].coefficients, f.coefficients[*slicepad, *cmod]
+                        f.tensor[*cmod].coefficients, f.coefficients[*slicepad, *cmod]
                     )

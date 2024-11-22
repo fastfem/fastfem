@@ -1,11 +1,11 @@
+from collections.abc import Callable, Iterable
+from typing import Literal
+
 import numpy as np
-from numpy.typing import NDArray
 import pytest
+from numpy.typing import NDArray
 
 from fastfem.fields.field import Field
-
-from typing import Literal
-from collections.abc import Callable, Iterable
 
 
 def transform_posmatrix_linearly(pos_matrix, mod, *args):
