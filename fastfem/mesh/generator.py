@@ -9,7 +9,7 @@ already exists.
 import copy
 import dataclasses
 import pathlib
-from typing import Any, Literal, Optional
+from typing import Literal, Optional
 
 import gmsh
 import numpy as np
@@ -49,7 +49,7 @@ gmsh_element_type_dictionary: dict[
     15: "point",
 }
 
-number_of_nodes_in_element: dict[
+number_of_nodes_per_element: dict[
     ZeroDElementType | OneDElementType | TwoDElementType, int
 ] = {
     "point": 1,
@@ -65,6 +65,16 @@ class Submesh:
     nodes: dict[int, np.ndarray]
     elements: dict[int, np.ndarray]
 
+    @property
+    def number_of_elements(self) -> int:
+        """Return the number of elements."""
+        return len(self.elements)
+
+    @property
+    def number_of_nodes_per_element(self) -> int:
+        """Return the number of nodes per element."""
+        return number_of_nodes_per_element[self.type]
+
 
 @dataclasses.dataclass(kw_only=True, frozen=True)
 class Domain:
@@ -77,6 +87,20 @@ class Domain:
 @dataclasses.dataclass(kw_only=True, frozen=True)
 class Mesh:
     domains: list[Domain]
+
+    @property
+    def nodes(self) -> dict[int, np.ndarray]:
+        """Return all the nodes."""
+        nodes = {}
+        for domain in self.domains:
+            for submesh in domain.mesh:
+                nodes.update(submesh.nodes)
+        return nodes
+
+    @property
+    def number_of_nodes(self) -> int:
+        """Return the number of nodes."""
+        return len(self.nodes)
 
     def __getitem__(self, key: str) -> Domain:
         """Return the mesh of the domain with the given name.
@@ -343,7 +367,7 @@ class Geometry:
                             "element_tags": np.array(elements_from_gmsh[1][i]),
                             "nodes_of_elements": np.array(
                                 elements_from_gmsh[2][i]
-                            ).reshape(-1, number_of_nodes_in_element[element_type]),
+                            ).reshape(-1, number_of_nodes_per_element[element_type]),
                         }
                     else:
                         types_and_elements[element_type]["element_tags"] = np.vstack(

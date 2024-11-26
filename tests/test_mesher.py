@@ -207,5 +207,11 @@ def test_rectangle_and_square_mesh(nx, ny, element_type, function):
             for tag, node_coordinates in domain.mesh[0].nodes.items():
                 assert len(node_coordinates) == 3
                 assert isinstance(tag, int)
+    if nx and ny:
+        assert mesh.number_of_nodes == nx * ny
+
+    for tag, node_coordinates in mesh.nodes.items():
+        assert len(node_coordinates) == 3
+        assert isinstance(tag, int)
 
     assert len(list(mesh)) == 5
