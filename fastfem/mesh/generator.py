@@ -49,14 +49,21 @@ gmsh_element_type_dictionary: dict[
     15: "point",
 }
 
+number_of_nodes_in_element: dict[
+    ZeroDElementType | OneDElementType | TwoDElementType, int
+] = {
+    "point": 1,
+    "line": 2,
+    "triangle": 3,
+    "quadrangle": 4,
+}
+
 
 @dataclasses.dataclass(kw_only=True, frozen=True)
 class Submesh:
     type: ZeroDElementType | OneDElementType | TwoDElementType
-    node_tags: np.ndarray[tuple[Any, Literal[1]], np.dtype[np.int64]]
-    coordinates_of_nodes: np.ndarray[tuple[Any, Literal[3]], np.dtype[np.float64]]
-    element_tags: np.ndarray[tuple[Any, Literal[1]], np.dtype[np.int64]]
-    nodes_of_elements: np.ndarray[tuple[Any, Literal[3]], np.dtype[np.int64]]
+    nodes: dict[int, np.ndarray]
+    elements: dict[int, np.ndarray]
 
 
 @dataclasses.dataclass(kw_only=True, frozen=True)
@@ -321,7 +328,7 @@ class Geometry:
                 dim, domain_tag
             )
             tags_of_nodes = nodes_from_gmsh[0]
-            coordinates_of_nodes = np.array(nodes_from_gmsh[1])
+            coordinates_of_nodes = np.array(nodes_from_gmsh[1]).reshape(-1, 3)
 
             geometric_entities = gmsh.model.get_entities_for_physical_group(
                 dim, domain_tag
@@ -333,8 +340,10 @@ class Geometry:
                     element_type = gmsh_element_type_dictionary[type]
                     if element_type not in types_and_elements:
                         types_and_elements[element_type] = {
-                            "element_tags": elements_from_gmsh[1][i],
-                            "nodes_of_elements": elements_from_gmsh[2][i],
+                            "element_tags": np.array(elements_from_gmsh[1][i]),
+                            "nodes_of_elements": np.array(
+                                elements_from_gmsh[2][i]
+                            ).reshape(-1, number_of_nodes_in_element[element_type]),
                         }
                     else:
                         types_and_elements[element_type]["element_tags"] = np.vstack(
@@ -356,14 +365,23 @@ class Geometry:
 
             # For each element type, create a Mesh object and append it to the meshes:
             meshes: list[Submesh] = []
+            nodes: dict[int, np.ndarray] = {
+                int(tag): coordinates
+                for tag, coordinates in zip(tags_of_nodes, coordinates_of_nodes)
+            }
             for element_type, elements_and_nodes in types_and_elements.items():
+                elements: dict[int, np.ndarray] = {
+                    int(tag): tags_of_nodes
+                    for tag, tags_of_nodes in zip(
+                        elements_and_nodes["element_tags"],
+                        elements_and_nodes["nodes_of_elements"],
+                    )
+                }
                 meshes.append(
                     Submesh(
                         type=element_type,
-                        node_tags=tags_of_nodes,  # type: ignore
-                        coordinates_of_nodes=coordinates_of_nodes,  # type: ignore
-                        element_tags=elements_and_nodes["element_tags"],
-                        nodes_of_elements=elements_and_nodes["nodes_of_elements"],
+                        nodes=nodes,
+                        elements=elements,
                     )
                 )
 

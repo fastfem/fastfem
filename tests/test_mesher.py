@@ -162,63 +162,50 @@ def test_valid_domains():
         "quadrangle",
     ],
 )
-def test_rectangle_mesh(nx, ny, element_type):
-    mesh = m.create_a_rectangle_mesh(
-        horizontal_length=1.0,
-        vertical_length=1.0,
-        nodes_in_horizontal_direction=nx,
-        nodes_in_vertical_direction=ny,
-        element_type=element_type,
+@pytest.mark.parametrize(
+    "function",
+    [
+        lambda nx, ny, type: m.create_a_rectangle_mesh(
+            horizontal_length=1.0,
+            vertical_length=1.0,
+            nodes_in_horizontal_direction=nx,
+            nodes_in_vertical_direction=ny,
+            element_type=type,
+        ),
+        lambda nx, ny, type: m.create_a_square_mesh(
+            side_length=1.0,
+            nodes_in_horizontal_direction=nx,
+            nodes_in_vertical_direction=ny,
+            element_type=type,
+        ),
+    ],
+)
+def test_rectangle_and_square_mesh(nx, ny, element_type, function):
+    mesh: m.SquareMesh | m.RectangleMesh = function(
+        nx=nx,
+        ny=ny,
+        type=element_type,
     )
     assert "bottom_boundary" in mesh
     assert "right_boundary" in mesh
     assert "top_boundary" in mesh
     assert "left_boundary" in mesh
     assert "surface" in mesh
-    assert mesh["bottom_boundary"].dimension == 1
-    assert mesh["right_boundary"].dimension == 1
-    assert mesh["top_boundary"].dimension == 1
-    assert mesh["left_boundary"].dimension == 1
-    assert mesh["surface"].dimension == 2
-    assert len(list(mesh)) == 5
+    for domain in mesh:
+        if domain.name == "surface":
+            assert domain.dimension == 2
+            if element_type == "triangle":
+                for tag, element_nodes in domain.mesh[0].elements.items():
+                    assert len(element_nodes) == 3
+                    assert isinstance(tag, int)
+            else:
+                for tag, element_nodes in domain.mesh[0].elements.items():
+                    assert len(element_nodes) == 4
+                    assert isinstance(tag, int)
+        else:
+            assert domain.dimension == 1
+            for tag, node_coordinates in domain.mesh[0].nodes.items():
+                assert len(node_coordinates) == 3
+                assert isinstance(tag, int)
 
-
-@pytest.mark.parametrize(
-    "nx",
-    [
-        10,
-        None,
-    ],
-)
-@pytest.mark.parametrize(
-    "ny",
-    [
-        10,
-        None,
-    ],
-)
-@pytest.mark.parametrize(
-    "element_type",
-    [
-        "triangle",
-        "quadrangle",
-    ],
-)
-def test_square_mesh(nx, ny, element_type):
-    mesh = m.create_a_square_mesh(
-        side_length=1.0,
-        nodes_in_horizontal_direction=nx,
-        nodes_in_vertical_direction=ny,
-        element_type=element_type,
-    )
-    assert "bottom_boundary" in mesh
-    assert "right_boundary" in mesh
-    assert "top_boundary" in mesh
-    assert "left_boundary" in mesh
-    assert "surface" in mesh
-    assert mesh["bottom_boundary"].dimension == 1
-    assert mesh["right_boundary"].dimension == 1
-    assert mesh["top_boundary"].dimension == 1
-    assert mesh["left_boundary"].dimension == 1
-    assert mesh["surface"].dimension == 2
     assert len(list(mesh)) == 5
