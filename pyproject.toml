@@ -65,6 +65,7 @@ classifiers = [
     "Intended Audience :: Education",
     "Programming Language :: Python :: 3.12",
     "Programming Language :: Python :: 3.13",
+    "Programming Language :: Python :: 3.13",
     "License :: OSI Approved :: Apache Software License",
     "Operating System :: OS Independent",
 ] # Go to https://pypi.org/classifiers/ to see all classifiers
@@ -175,7 +176,7 @@ relative_files = true
 
 [tool.coverage.report]
 # Don't include these lines in the coverage report:
-exclude_lines = ["if __name__ == .__main__.:", "return __all__"]
+exclude_lines = ["if __name__ == .__main__.:", "return __all__", "raise NotImplementedError"]
 
 
 [tool.pytest.ini_options]
