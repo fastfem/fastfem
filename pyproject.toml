@@ -21,7 +21,7 @@
 # are many build packages like `setuptools`, `flit`, `poetry`, `hatchling`, etc. We will
 # use `hatchling`.
 requires = [
-    "hatchling==1.25.0",
+    "hatchling==1.26.3",
 ] # List of packages that are needed to build the package
 
 # Python has a standard object format called build-backend object. Python standard asks
