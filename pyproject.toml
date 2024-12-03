@@ -14,6 +14,12 @@ packages = ["fastfem"]
 path = "fastfem/__init__.py"
 
 [project]
+dependencies = [
+    "jax==0.4.35",
+    "matplotlib==3.9.3",
+    "gmsh==4.13.1",
+    "pyvista==0.44.2",
+]
 authors = [
     { name = 'Sina Atalay', email = 'dev@atalay.biz' },
     { name = "Kentaro Hanson", email = "example@example.com" },
@@ -24,7 +30,6 @@ description = 'A Python package for solving PDEs with the finite element method 
 license = "Apache-2.0"
 readme = "README.md"
 requires-python = '>=3.12'
-dependencies = ["jax==0.4.35", "matplotlib==3.9.3", "gmsh==4.13.1"]
 classifiers = [
     "Intended Audience :: Science/Research",
     "Intended Audience :: Education",
