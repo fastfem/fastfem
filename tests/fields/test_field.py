@@ -188,7 +188,6 @@ def test_field_broadcast_full_on_doubles(comparison_two_shapes):
 
 
 def test_field_accessors():
-
     def random_accessors(n, base_shape):
         def rand_symbol(dimsize):
             if np.random.rand() < 0.5 and dimsize > 0:

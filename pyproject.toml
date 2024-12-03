@@ -3,7 +3,7 @@ requires = ["hatchling==1.26.3"]
 build-backend = "hatchling.build"
 
 [tool.hatch.build.targets.sdist]
-# In the sdist, what do we want to exclude? 
+# In the sdist, what do we want to exclude?
 exclude = [".github/", ".devcontainer/"]
 
 [tool.hatch.build.targets.wheel]
@@ -55,7 +55,7 @@ dependencies = [
     "ruff",     # to lint the code
     "black",    # to format the code
     "ipython",  # for ipython shell
-    "isort",    # to sort the imports  
+    "isort",    # to sort the imports
     "pyright",  # to check the types
     "pytest",   # to run the tests
     "coverage", # to measure the test coverage
@@ -71,7 +71,7 @@ sort = "isort fastfem && isort tests" # hatch run sort
 # Check types with `pyright`:
 check-types = "pyright fastfem && pyright tests" # hatch run check-types
 # Run the tests:
-tests = "pytest" # hatch run tests 
+tests = "pytest" # hatch run tests
 # Run the tests and generate the coverage report as HTML:
 tests-and-coverage = "coverage run -m pytest && coverage report && coverage html --show-contexts" # hatch run tests-and-coverage
 

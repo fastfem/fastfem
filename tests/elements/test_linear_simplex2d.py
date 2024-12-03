@@ -76,7 +76,6 @@ def transformed_element(element, transformation):
 
 @pytest.fixture(scope="session")
 def triangle_quadrature():
-
     reference_rules = dict()
 
     class TriangleQuadratureRuleBuilder:
@@ -91,7 +90,6 @@ def triangle_quadrature():
                 tribounds = np.array(tribounds)
 
             if exactness not in reference_rules:
-
                 # num polys: count (a,b) for which a+b <= exactness
                 # for simplicity of solving for weights, we use a
                 # 2d newton-coates variant, where our "equally-spaced"
@@ -148,7 +146,6 @@ def triangle_quadrature():
 
 @pytest.mark.skip
 def test_integrate_reftri(triangle_quadrature):
-
     # this is used to do midpoint rule on triangles
     def cross_mag(A, B):
         return np.abs(A[..., 0] * B[..., 1] - B[..., 0] * A[..., 1])
