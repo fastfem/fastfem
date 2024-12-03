@@ -1,9 +1,19 @@
 import dataclasses
-from typing import Optional
+import pathlib
+from typing import Literal, Optional
 
-from .generator import TwoDElementType, Line, Point, Surface, Geometry
+from .generator import (
+    Domain,
+    Geometry,
+    Line,
+    Mesh,
+    Point,
+    Surface,
+    TwoDElementType,
+    mesh,
+)
 
-__all__ = ["Rectangle", "Square"]
+__all__ = ["create_a_rectangle_mesh", "create_a_square_mesh", "Rectangle", "Square"]
 
 
 def __dir__() -> list[str]:
@@ -42,7 +52,7 @@ class Rectangle:
             self.transfinite = True
 
         self.surface = Surface(
-            lines=[
+            outer_lines=[
                 Line(
                     Point(0, 0, 0),
                     Point(self.horizontal_length, 0, 0),
@@ -94,17 +104,6 @@ class Square(Rectangle):
         self.horizontal_length = self.side_length
         self.vertical_length = self.side_length
         super().__post_init__()
-
-import pathlib
-from typing import Literal, Optional
-
-from .generator import Domain, Line, Mesh, Point, Surface, TwoDElementType, mesh
-
-__all__ = ["create_a_rectangle_mesh", "create_a_square_mesh"]
-
-
-def __dir__() -> list[str]:
-    return __all__
 
 
 RectangleDomainName = Literal[

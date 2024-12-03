@@ -26,7 +26,6 @@ class LinearSimplex2D(Element2D):
         )
 
     def _compute_field_gradient(self, field, pos_field=None):
-
         if (
             field.basis_shape == tuple()
             or len(field.coefficients.shape) == 0

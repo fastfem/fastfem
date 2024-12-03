@@ -64,7 +64,6 @@ class AffineTransformHandler:
         elif target_type == "vector":
             return lambda x: T(x) - T(np.zeros(2))
         elif target_type == "form":
-
             shift = T(np.zeros(2))
             A_Tinv = np.linalg.inv(T(np.eye(2)) - shift).T
             return lambda x: (A_Tinv @ np.expand_dims(x, -1)).squeeze(-1)

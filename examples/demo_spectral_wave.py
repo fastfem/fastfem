@@ -3,7 +3,6 @@ import numpy as np
 import argparse
 
 
-
 def run_demo(
     elem_order: int,
     nelem_x: int,
@@ -66,9 +65,15 @@ def run_demo(
             coords[i, j, :, :, 1] = cell_height * (
                 j + (elem.knots[np.newaxis, :] + 1) / 2
             )
-            MASS_MAT[global_indices[i, j]] += elem.mass_matrix(coords[i, j],
-                np.unravel_index(np.arange((elem_order+1)**2),(elem_order+1,elem_order+1)),
-                np.unravel_index(np.arange((elem_order+1)**2),(elem_order+1,elem_order+1)))
+            MASS_MAT[global_indices[i, j]] += elem.mass_matrix(
+                coords[i, j],
+                np.unravel_index(
+                    np.arange((elem_order + 1) ** 2), (elem_order + 1, elem_order + 1)
+                ),
+                np.unravel_index(
+                    np.arange((elem_order + 1) ** 2), (elem_order + 1, elem_order + 1)
+                ),
+            )
             U[global_indices[i, j]] = init_cond_U(
                 coords[i, j, :, :, 0], coords[i, j, :, :, 1]
             )
@@ -165,7 +170,7 @@ Example code for the spectral elements to solve the Wave Equation.
 This code uses a custom mesh assembly, separate from the package.
                     """,
         epilog="""
-The equation is 
+The equation is
         { ∂ₜu² = Δu on Ω=(0,1)²   and   u = 0 on ∂Ω } with wave speed 1.
         """,
     )
