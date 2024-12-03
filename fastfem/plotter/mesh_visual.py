@@ -146,5 +146,6 @@ class VisualMesh:
     def make_gif(self):
         pass
 
+
     def save(self, file_name):
         pass
