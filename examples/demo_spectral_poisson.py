@@ -3,7 +3,6 @@ import numpy as np
 import argparse
 
 
-
 def run_demo(
     f_generator, elem_order: int, nelem_x: int, nelem_y: int, max_iters: int = 50
 ):

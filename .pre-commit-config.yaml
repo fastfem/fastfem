@@ -1,0 +1,14 @@
+repos:
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v5.0.0
+    hooks:
+      - id: trailing-whitespace
+    types: [python, yaml, markdown, toml]
+  - repo: https://github.com/astral-sh/ruff-pre-commit
+    rev: v0.7.1
+    hooks:
+      # Ruff's settings are configured in the pyproject.toml file
+      - id: ruff
+        args: ["--fix", "--show-fixes"]
+      - id: ruff-format
+    types: [python, yaml, markdown, toml]

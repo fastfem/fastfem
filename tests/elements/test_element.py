@@ -151,7 +151,6 @@ def test_reference_deformation_gradient(elem: str):
 
 
 def random_basis_coefs(element: Element2D, num_trials: int | None = None):
-
     # maybe Hypothesis would have been a good idea?
 
     # default num_trials to twice the field space dimension

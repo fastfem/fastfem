@@ -29,7 +29,6 @@ def transformed_element(element, transformation):
 
 @pytest.fixture(scope="module")
 def transformed_element_stack(transform_stack, element):
-
     transformed = transform_stack(element.reference_element_position_field())
     ndims = len(transformed.shape) - len(element.basis_shape())
     pts_stack = np.permute_dims(
@@ -469,8 +468,7 @@ def test_gll_build(deg):
         res_true = 2 / (i + 1)
         assert quad == pytest.approx(res_true, abs=1e-8), (
             "GLL quadrature must be exact for polynomials up to degree 2n-1"
-            f" ({2*deg - 1})! "
-            + f"Failed at degree {i}."
+            f" ({2*deg - 1})! " + f"Failed at degree {i}."
         )
 
     # verify L

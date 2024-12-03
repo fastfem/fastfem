@@ -2,9 +2,9 @@ site_name: FastFEM
 site_description: A Python package for solving PDEs with the finite element method and automatic differentiation.
 site_author: FastFEM Developers
 copyright: Copyright &copy; 2023 - 2024 FastFEM Developers
-site_url: https://sinatay.github.io/fastfem/
-repo_url: https://github.com/sinaatalay/fastfem/
-repo_name: sinaatalay/fastfem
+site_url: https://fastfem.com/
+repo_url: https://github.com/fastfem/fastfem/
+repo_name: fastfem/fastfem
 edit_uri: edit/main/docs/
 
 nav:
