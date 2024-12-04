@@ -1,6 +1,6 @@
 import numpy as np
 
-from fastfem.elements.element import Element2D
+from fastfem.elements.element2d import Element2D
 from fastfem.fields.field import Field
 
 

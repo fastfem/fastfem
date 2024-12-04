@@ -5,7 +5,7 @@ import numpy as np
 import numpy.typing
 from numpy.typing import ArrayLike, NDArray
 
-import fastfem.elements.element as element
+import fastfem.elements.element2d as element
 from fastfem.fields.field import Field
 
 
