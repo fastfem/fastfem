@@ -1,11 +1,15 @@
 import itertools
 import typing
 from dataclasses import dataclass
+import dataclasses
 from typing import Literal
 
 import numpy as np
 from numpy.typing import ArrayLike, NDArray
 
+from enum import IntEnum
+
+import jax
 
 def _is_broadcastable(base: tuple[int, ...], *shapes: tuple[int, ...]) -> bool:
     """Checks if shapes are broadcastable into base by numpy broadcasting rules.
@@ -59,15 +63,54 @@ def _is_compatible(*shapes: tuple[int, ...]) -> bool:
 class FieldShapeError(Exception):
     pass
 
+class ShapeComponent(IntEnum):
+    STACK = 0
+    BASIS = 1
+    FIELD = 2
+
+@dataclass(frozen=True)
+class FieldAxisIndex:
+    component: ShapeComponent
+    index: int
+    @typing.overload
+    def __getitem__(self,ind:Literal[0]) -> ShapeComponent: ...
+    @typing.overload
+    def __getitem__(self,ind:Literal[1]) -> int: ...
+
+    def __getitem__(self,ind):
+        if ind == 0:
+            return self.component
+        else:
+            return self.index
+
+FieldAxisIndexType = tuple[ShapeComponent,int] | FieldAxisIndex
+
+def _verify_is_permutation(p: tuple[int,...]) -> None:
+    if not isinstance(p,tuple):
+        raise FieldShapeError("shape_order is not a permutation! (must be a tuple)")
+    n = len(p) #size of the permutation
+    exists = [False] * n
+    for i in p:
+        if not isinstance(i,int):
+            raise FieldShapeError("shape_order is not a permutation! (all entries must be integers)")
+        exists[i] = True
+
+    if not all(exists):
+        raise FieldShapeError("shape_order is not a permutation! (must be a bijection)")
+        
+
+
 
 class FieldConstructionError(FieldShapeError):
     """Called when constructing a field fails."""
 
-    def __init__(self, basis_shape, field_shape, coeff_shape):
+    def __init__(self, basis_shape, field_shape, coeff_shape, shape_order, hint = None):
         errmsg = (
             f"Cannot construct Field object with basis_shape {basis_shape},"
-            f" field_shape {field_shape} given the coefficient shape {coeff_shape}. "
+            f" field_shape {field_shape} given the coefficient shape {coeff_shape} and shape order {shape_order}."
         )
+        if hint is not None:
+            errmsg += f" ({hint})"
         super().__init__(errmsg)
 
 
@@ -84,8 +127,14 @@ class FieldBasisAccessor:
         # do validation
         basis = np.broadcast_to(0, self.parent.basis_shape)
         new_basis_shape = basis[slices].shape
+        slicepad = (slice(None),) * (
+            (len(self.parent.stack_shape) if self.parent.shape_order[ShapeComponent.STACK] < self.parent.shape_order[ShapeComponent.BASIS] else 0)
+            +(len(self.parent.field_shape) if self.parent.shape_order[ShapeComponent.FIELD] < self.parent.shape_order[ShapeComponent.BASIS] else 0)
+            )
+        if not isinstance(slices, tuple):
+            slices = (slices,)
         return Field(
-            new_basis_shape, self.parent.field_shape, self.parent.coefficients[slices]
+            new_basis_shape, self.parent.field_shape, self.parent.coefficients[*slicepad, *slices]
         )
 
 
@@ -102,7 +151,10 @@ class FieldStackAccessor:
         # do validation
         stack = np.broadcast_to(0, self.parent.stack_shape)
         new_stack_shape = stack[slices].shape  # noqa: F841
-        slicepad = (slice(None),) * len(self.parent.basis_shape)
+        slicepad = (slice(None),) * (
+            (len(self.parent.basis_shape) if self.parent.shape_order[ShapeComponent.BASIS] < self.parent.shape_order[ShapeComponent.STACK] else 0)
+            +(len(self.parent.field_shape) if self.parent.shape_order[ShapeComponent.FIELD] < self.parent.shape_order[ShapeComponent.STACK] else 0)
+            )
         if not isinstance(slices, tuple):
             slices = (slices,)
         return Field(
@@ -127,8 +179,9 @@ class FieldElementAccessor:
         element = np.broadcast_to(0, self.parent.field_shape)
         new_field_shape = element[slices].shape
         slicepad = (slice(None),) * (
-            len(self.parent.basis_shape) + len(self.parent.stack_shape)
-        )
+            (len(self.parent.basis_shape) if self.parent.shape_order[ShapeComponent.BASIS] < self.parent.shape_order[ShapeComponent.FIELD] else 0)
+            +(len(self.parent.stack_shape) if self.parent.shape_order[ShapeComponent.STACK] < self.parent.shape_order[ShapeComponent.FIELD] else 0)
+            )
         if not isinstance(slices, tuple):
             slices = (slices,)
         return Field(
@@ -136,7 +189,6 @@ class FieldElementAccessor:
             new_field_shape,
             self.parent.coefficients[*slicepad, *slices],
         )
-
 
 @dataclass(eq=False, frozen=True, unsafe_hash=False, init=False)
 class Field:
@@ -153,22 +205,33 @@ class Field:
     - `field_shape` - The shape of the field. These axes represent the pointwise,
             per-element tensor index.
 
-    The shape of `coefficients` will be `(*basis_shape,*stack_shape,*field_shape)`.
+    The shape of `coefficients` will be some permutation of
+    `stack_shape + field_shape + basis_shape`. The order is specified by `shape_order`,
+    which is a 3-tuple `(stack_location, field_location, basis_location)`, where each
+    entry is an integer specifying the position relative to the other two shapes.
     """
 
     basis_shape: tuple[int, ...]
     stack_shape: tuple[int, ...]
     field_shape: tuple[int, ...]
-    coefficients: NDArray
+    coefficients: NDArray | jax.Array
+    shape_order: tuple[int,int,int] = dataclasses.field(repr=False,init=False)
+    use_jax: bool = dataclasses.field(repr=False,init=False)
 
     def __init__(
         self,
         basis_shape: tuple[int, ...],
         field_shape: tuple[int, ...],
         coefficients: ArrayLike,
-    ):
-        if not isinstance(coefficients, np.ndarray):
+        shape_order: tuple[int,int,int] = (0,1,2),
+        use_jax: bool|None = None,
+    ):  
+        _verify_is_permutation(shape_order)
+        if (not isinstance(coefficients, np.ndarray)
+                and not isinstance(coefficients, jax.Array)):
             coefficients = np.array(coefficients)
+        if use_jax is None:
+            use_jax = isinstance(coefficients, jax.Array)
         cshape_orig = np.shape(coefficients)
         if len(cshape_orig) < len(basis_shape) + len(field_shape):
             coefficients = coefficients[
@@ -181,21 +244,69 @@ class Field:
             cshape = np.shape(coefficients)
         else:
             cshape = cshape_orig
-        bmarker = len(basis_shape)  # where basis_shape ends (excl)
-        fmarker = len(cshape) - len(field_shape)  # where f_shape begins (incl)
-        if (not _is_broadcastable(basis_shape, cshape[:bmarker])) or (
-            not _is_broadcastable(field_shape, cshape[fmarker:])
-        ):
-            raise FieldConstructionError(basis_shape, field_shape, cshape_orig)
-        stack_shape = cshape[bmarker:fmarker]
-        object.__setattr__(
-            self,
-            "coefficients",
-            np.broadcast_to(coefficients, basis_shape + stack_shape + field_shape),
-        )
+        
+        #here, coefficients is at least as large as basis and field shapes combined
+
+        # we need to place two markers to index the separations between basis, field,
+        # and stack shapes; start with basis_shape (if not in middle)
+        stack_start = 0
+        stack_end = len(cshape)
+        def cshape_slice_positives(a,b):
+            return cshape[a:b]
+        def cshape_slice_negatives(a,b):
+            return cshape[a:(b if b != 0 else None)] if a != 0 else tuple()
+        if shape_order[ShapeComponent.BASIS] == 0:
+            if not _is_broadcastable(basis_shape,cshape_slice_positives(0,len(basis_shape))):
+                raise FieldConstructionError(basis_shape,field_shape,cshape_orig,shape_order,hint = "basis_shape cannot be broadcasted at the beginning")
+            stack_start = len(basis_shape)
+        elif shape_order[ShapeComponent.BASIS] == 2:
+            if not _is_broadcastable(basis_shape,cshape_slice_negatives(-len(basis_shape),0)):
+                raise FieldConstructionError(basis_shape,field_shape,cshape_orig,shape_order,hint = "basis_shape cannot be broadcasted at the end")
+            stack_end -= len(basis_shape)
+        # then do field_shape
+        if shape_order[ShapeComponent.FIELD] == 0:
+            if not _is_broadcastable(field_shape,cshape_slice_positives(0,len(field_shape))):
+                raise FieldConstructionError(basis_shape,field_shape,cshape_orig,shape_order,hint = "field_shape cannot be broadcasted at the beginning")
+            # if basis_shape was in center, we now have the right offset for it
+            if shape_order[ShapeComponent.BASIS] == 1:
+                if not _is_broadcastable(basis_shape,cshape_slice_positives(len(field_shape),(len(basis_shape) + len(field_shape)))):
+                    raise FieldConstructionError(basis_shape,field_shape,cshape_orig,shape_order,hint = "basis_shape cannot be broadcasted in the center")
+                stack_start = len(basis_shape) + len(field_shape)
+            else:
+                stack_start = len(field_shape)
+        elif shape_order[ShapeComponent.FIELD] == 2:
+            if not _is_broadcastable(field_shape,cshape_slice_negatives(-len(field_shape),0)):
+                raise FieldConstructionError(basis_shape,field_shape,cshape_orig,shape_order,hint = "field_shape cannot be broadcasted at the end")
+            # if basis_shape was in center, we now have the right offset for it
+            if shape_order[ShapeComponent.BASIS] == 1:
+                if not _is_broadcastable(basis_shape,cshape_slice_negatives(-(len(basis_shape) + len(field_shape)),-len(field_shape))):
+                    raise FieldConstructionError(basis_shape,field_shape,cshape_orig,shape_order,hint = "basis_shape cannot be broadcasted in the center")
+                stack_end -= len(basis_shape)+ len(field_shape)
+            else:
+                stack_end -= len(field_shape)
+        elif shape_order[ShapeComponent.FIELD] == 1:
+            #cases by basis_location
+            if shape_order[ShapeComponent.BASIS] == 0:
+                if not _is_broadcastable(field_shape,cshape_slice_positives(len(basis_shape),(len(basis_shape) + len(field_shape)))):
+                    raise FieldConstructionError(basis_shape,field_shape,cshape_orig,shape_order,hint = "field_shape cannot be broadcasted in the center")
+                stack_start = len(basis_shape) + len(field_shape)
+            else:
+                if not _is_broadcastable(field_shape,cshape_slice_negatives(-(len(basis_shape) + len(field_shape)),-len(basis_shape))):
+                    raise FieldConstructionError(basis_shape,field_shape,cshape_orig,shape_order,hint = "field_shape cannot be broadcasted in the center")
+                stack_end -= len(basis_shape) + len(field_shape)
+        
+        
+        stack_shape = cshape[stack_start:stack_end]
+        shapes:list[tuple[int,...]] = [tuple()] * 3
+        shapes[ShapeComponent.BASIS] = basis_shape
+        shapes[ShapeComponent.STACK] = stack_shape
+        shapes[ShapeComponent.FIELD] = field_shape
+        object.__setattr__(self,"coefficients", np.broadcast_to(coefficients,shapes[0]+shapes[1]+shapes[2]))
         object.__setattr__(self, "basis_shape", basis_shape)
         object.__setattr__(self, "field_shape", field_shape)
         object.__setattr__(self, "stack_shape", stack_shape)
+        object.__setattr__(self, "shape_order", shape_order)
+        object.__setattr__(self, "use_jax", use_jax)
 
     @typing.overload
     def __getattr__(
@@ -206,23 +317,25 @@ class Field:
     @typing.overload
     def __getattr__(self, name: Literal["stack"]) -> FieldStackAccessor: ...
     @typing.overload
-    def __getattr__(self, name: Literal["tensor"]) -> FieldElementAccessor: ...
+    def __getattr__(self, name: Literal["point"]) -> FieldElementAccessor: ...
 
     def __getattr__(self, name):
         if name == "shape":
-            return (self.basis_shape, self.stack_shape, self.field_shape)
+            return (self.stack_shape, self.basis_shape, self.field_shape)
         elif name == "basis":
             return FieldBasisAccessor(self)
         elif name == "stack":
             return FieldStackAccessor(self)
-        elif name == "tensor":
+        elif name == "point":
             return FieldElementAccessor(self)
         raise AttributeError
 
+    def get_shape(self,component:ShapeComponent) -> tuple[int,...]:
+        return self.basis_shape if component == ShapeComponent.BASIS else (self.stack_shape if component == ShapeComponent.STACK else self.field_shape)
     def broadcast_to_shape(
         self,
-        basis_shape: tuple[int, ...],
         stack_shape: tuple[int, ...],
+        basis_shape: tuple[int, ...],
         field_shape: tuple[int, ...],
     ) -> "Field":
         if (
@@ -232,18 +345,17 @@ class Field:
         ):
             raise FieldShapeError(
                 f"Cannot broadcast field of shape {self.shape} into"
-                f" shape {(basis_shape,stack_shape,field_shape)}"
+                f" shape {(stack_shape,basis_shape,field_shape)}"
             )
+        slices: list[typing.Any] = [None,None,None]
+        slices[ShapeComponent.BASIS] = itertools.chain((np.newaxis for _ in range(len(basis_shape) - len(self.basis_shape))),(slice(None) for _ in range(len(self.basis_shape))))
+        slices[ShapeComponent.STACK] = itertools.chain((np.newaxis for _ in range(len(stack_shape) - len(self.stack_shape))),(slice(None) for _ in range(len(self.stack_shape))))
+        slices[ShapeComponent.FIELD] = itertools.chain((np.newaxis for _ in range(len(field_shape) - len(self.field_shape))),(slice(None) for _ in range(len(self.field_shape))))
         return Field(
             basis_shape,
             field_shape,
             self.coefficients[
-                *(np.newaxis for _ in range(len(basis_shape) - len(self.basis_shape))),
-                *(slice(None) for _ in range(len(self.basis_shape))),
-                *(np.newaxis for _ in range(len(stack_shape) - len(self.stack_shape))),
-                *(slice(None) for _ in range(len(self.stack_shape))),
-                *(np.newaxis for _ in range(len(field_shape) - len(self.field_shape))),
-                *(slice(None) for _ in range(len(self.field_shape))),
+                *itertools.chain(*slices)
             ],
         )
 
@@ -260,7 +372,7 @@ class Field:
             stack_shape = np.broadcast_shapes(*[field.stack_shape for field in fields])
             field_shape = np.broadcast_shapes(*[field.field_shape for field in fields])
             return tuple(
-                field.broadcast_to_shape(basis_shape, stack_shape, field_shape)
+                field.broadcast_to_shape(stack_shape, basis_shape, field_shape)
                 for field in fields
             )
         raise FieldShapeError("Cannot broadcast fields with incompatible shapes.")
@@ -293,10 +405,32 @@ class Field:
             basis_shape = np.broadcast_shapes(*[field.basis_shape for field in fields])
             stack_shape = np.broadcast_shapes(*[field.stack_shape for field in fields])
             return tuple(
-                field.broadcast_to_shape(basis_shape, stack_shape, field.field_shape)
+                field.broadcast_to_shape(stack_shape, basis_shape, field.field_shape)
                 for field in fields
             )
         raise FieldShapeError("Cannot broadcast fields with incompatible shapes.")
+
+    def _axis_field_to_numpy(self, index: FieldAxisIndexType, out_of_bounds_check: bool = True):
+        comp: ShapeComponent = index[0]
+        ind: int = index[1]
+        shape = self.get_shape(comp)
+
+        if ind < 0:
+            if out_of_bounds_check and ind < -len(shape):
+                raise IndexError(f"Attempting to access axis {ind} ({-1-ind}) of shape {shape}.")
+            ind = -1-ind
+        elif out_of_bounds_check and ind >= len(shape):
+            raise IndexError(f"Attempting to access axis {ind} of shape {shape}.")
+
+        prec = self.shape_order[comp]
+        if self.shape_order[ShapeComponent.BASIS] < prec:
+            ind += len(self.basis_shape)
+        if self.shape_order[ShapeComponent.STACK] < prec:
+            ind += len(self.stack_shape)
+        if self.shape_order[ShapeComponent.FIELD] < prec:
+            ind += len(self.field_shape)
+        return ind
+
 
     def __eq__(self, other) -> bool:
         if not Field.are_broadcastable(self, other):

@@ -1,7 +1,8 @@
 import numpy as np
 
 from fastfem.elements.element2d import Element2D
-from fastfem.fields.field import Field
+from fastfem.fields.field import Field, ShapeComponent
+import fastfem.fields.numpy_similes as fnp
 
 
 class LinearSimplex2D(Element2D):
@@ -39,8 +40,8 @@ class LinearSimplex2D(Element2D):
 
         grad_coefs = np.stack(
             [
-                field.coefficients[1, ...] - field.coefficients[0, ...],
-                field.coefficients[2, ...] - field.coefficients[0, ...],
+                field.basis[1, ...].coefficients - field.basis[0, ...].coefficients,
+                field.basis[2, ...].coefficients - field.basis[0, ...].coefficients,
             ],
             axis=-1,
         )
@@ -55,7 +56,7 @@ class LinearSimplex2D(Element2D):
     def _integrate_field(self, pos_field, field, jacobian_scale=...):
         coefs = (np.ones((3, 3)) + np.eye(3)) / 24
         fieldpad = (np.newaxis,) * len(field.field_shape)
-        return np.einsum(
+        return Field(tuple(),field.field_shape,np.einsum(
             "...,ij,i...,j...->...",
             np.abs(
                 np.linalg.det(self._compute_field_gradient(pos_field).coefficients)[
@@ -63,9 +64,9 @@ class LinearSimplex2D(Element2D):
                 ]
             ),
             coefs,
-            field.coefficients,
-            jacobian_scale.coefficients[..., *fieldpad],
-        )
+            fnp.moveaxis(field,(ShapeComponent.BASIS,0),(ShapeComponent.STACK,0)).coefficients,
+            fnp.moveaxis(field,(ShapeComponent.BASIS,0),(ShapeComponent.STACK,0)).coefficients[..., *fieldpad],
+        ))
 
     def _integrate_basis_times_field(
         self, pos_field, field, indices=None, jacobian_scale=...

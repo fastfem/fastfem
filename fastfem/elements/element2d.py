@@ -3,6 +3,7 @@ import collections.abc as colltypes
 
 import numpy as np
 from numpy.typing import ArrayLike, NDArray
+import jax
 
 from fastfem.elements.element import ElementBase, IsoparametricElement
 from fastfem.fields.field import Field as FieldType
@@ -36,7 +37,7 @@ class Element2D(ElementBase, IsoparametricElement):
         field: FieldType,
         X: ArrayLike,
         Y: ArrayLike,
-    ) -> NDArray:
+    ) -> FieldType | jax.Array:
         """Evaluates field at (X,Y) in reference coordinates.
         The result is an array of values `field(X,Y)`.
 
@@ -72,7 +73,7 @@ class Element2D(ElementBase, IsoparametricElement):
         field: FieldType,
         X: NDArray,
         Y: NDArray,
-    ) -> NDArray:
+    ) -> FieldType | jax.Array:
         """Evaluates field at (X,Y) in reference coordinates.
         The result is an array of values `field(X,Y)`.
 
@@ -140,7 +141,7 @@ class Element2D(ElementBase, IsoparametricElement):
     def _compute_field_gradient(
         self,
         field: FieldType,
-        pos_field: FieldType | None = None,
+        pos_field: FieldType | None,
     ) -> FieldType:
         """
         Calculates the gradient of a field f, returning a new field.
@@ -174,7 +175,7 @@ class Element2D(ElementBase, IsoparametricElement):
         X: ArrayLike,
         Y: ArrayLike,
         pos_field: FieldType | None = None,
-    ) -> NDArray:
+    ) -> FieldType | jax.Array:
         """
         Calculates the gradient of a field f at the reference coordinates (X,Y).
         The result is an array of shape `(...,*fieldshape,2)`,
@@ -244,8 +245,8 @@ class Element2D(ElementBase, IsoparametricElement):
         field: FieldType,
         X: NDArray,
         Y: NDArray,
-        pos_field: FieldType | None = None,
-    ) -> NDArray:
+        pos_field: FieldType | None,
+    ) -> FieldType | jax.Array:
         """
         Calculates the gradient of a field f at the reference coordinates (X,Y).
         The result is an array of shape `(...,*fieldshape,2)`,
@@ -289,7 +290,7 @@ class Element2D(ElementBase, IsoparametricElement):
         pos_field: FieldType,
         field: FieldType,
         jacobian_scale: FieldType = FieldType(tuple(), tuple(), 1),
-    ) -> NDArray:
+    ) -> FieldType:
         """
         Integrates `field` $f$ over the element. The result is the value of
         $\\int \\alpha f ~dV$ over the element, as an array of shape
@@ -330,8 +331,8 @@ class Element2D(ElementBase, IsoparametricElement):
         self,
         pos_field: FieldType,
         field: FieldType,
-        jacobian_scale: FieldType = FieldType(tuple(), tuple(), 1),
-    ) -> NDArray:
+        jacobian_scale: FieldType,
+    ) -> FieldType:
         """
         Integrates `field` $f$ over the element. The result is the value of
         $\\int \\alpha f ~dV$ over the element, as an array of shape
@@ -359,7 +360,7 @@ class Element2D(ElementBase, IsoparametricElement):
         field: FieldType,
         indices: colltypes.Sequence | None = None,
         jacobian_scale: FieldType = FieldType(tuple(), tuple(), 1),
-    ) -> NDArray:
+    ) -> FieldType:
         """
         Computes the integral $\\int \\alpha \\phi_i f ~ dV$
         for fields $f$ and $\\alpha$, on this element, given by `field` and
@@ -409,9 +410,9 @@ class Element2D(ElementBase, IsoparametricElement):
         self,
         pos_field: FieldType,
         field: FieldType,
-        indices: colltypes.Sequence | None = None,
-        jacobian_scale: FieldType = FieldType(tuple(), tuple(), 1),
-    ) -> NDArray:
+        indices: colltypes.Sequence | None,
+        jacobian_scale: FieldType,
+    ) -> FieldType:
         """
         Computes the integral $\\int \\alpha \\phi_i f ~ dV$
         for fields $f$ and $\\alpha$, on this element, given by `field` and
@@ -445,7 +446,7 @@ class Element2D(ElementBase, IsoparametricElement):
         pos_field: FieldType,
         indices: colltypes.Sequence | None = None,
         jacobian_scale: FieldType = FieldType(tuple(), tuple(), 1),
-    ) -> NDArray:
+    ) -> FieldType:
         """
         Recovers the mass matrix entries $\\int \\alpha \\phi_i \\phi_j ~ dV$
         for this element. `pos_field` has shape `(basis_shape,...,2)`, where the
@@ -491,9 +492,9 @@ class Element2D(ElementBase, IsoparametricElement):
     def _mass_matrix(
         self,
         pos_field: FieldType,
-        indices: colltypes.Sequence | None = None,
-        jacobian_scale: FieldType = FieldType(tuple(), tuple(), 1),
-    ) -> NDArray:
+        indices: colltypes.Sequence | None,
+        jacobian_scale: FieldType,
+    ) -> FieldType:
         """
         Recovers the mass matrix entries $\\int \\alpha \\phi_i \\phi_j ~ dV$
         for this element. `pos_field` has shape `(basis_shape,...,2)`, where the
@@ -532,7 +533,7 @@ class Element2D(ElementBase, IsoparametricElement):
             None if indices is None else indices[: len(self.basis_shape())],
             jacobian_scale,
         )
-        return mat if indices is None else mat[*indices[len(self.basis_shape()) :]]
+        return mat if indices is None else mat.basis[*indices[len(self.basis_shape()) :]]
 
     def integrate_grad_basis_dot_field(
         self,
@@ -540,7 +541,7 @@ class Element2D(ElementBase, IsoparametricElement):
         field: FieldType,
         indices: colltypes.Sequence | None = None,
         jacobian_scale: FieldType = FieldType(tuple(), tuple(), 1),
-    ) -> NDArray:
+    ) -> FieldType:
         """
         Computes the integral $\\int \\alpha \\nabla \\phi_i \\cdot f ~ dV$
         for a field $f$, on this element. The dot product takes the last axis of
@@ -588,9 +589,9 @@ class Element2D(ElementBase, IsoparametricElement):
         self,
         pos_field: FieldType,
         field: FieldType,
-        indices: colltypes.Sequence | None = None,
-        jacobian_scale: FieldType = FieldType(tuple(), tuple(), 1),
-    ) -> NDArray:
+        indices: colltypes.Sequence | None,
+        jacobian_scale: FieldType,
+    ) -> FieldType:
         """
         Computes the integral $\\int \\alpha \\nabla \\phi_i \\cdot f ~ dV$
         for a field $f$, on this element. The dot product takes the last axis of
@@ -623,7 +624,7 @@ class Element2D(ElementBase, IsoparametricElement):
         field: FieldType,
         indices: colltypes.Sequence | None = None,
         jacobian_scale: FieldType = FieldType(tuple(), tuple(), 1),
-    ) -> NDArray:
+    ) -> FieldType:
         """
         Computes the integral $\\int \\alpha \\nabla \\phi_i \\cdot \\nabla f ~ dV$
         for a field $f$, on this element. The dot product is over the gradients.
@@ -667,9 +668,9 @@ class Element2D(ElementBase, IsoparametricElement):
         self,
         pos_field: FieldType,
         field: FieldType,
-        indices: colltypes.Sequence | None = None,
-        jacobian_scale: FieldType = FieldType(tuple(), tuple(), 1),
-    ) -> NDArray:
+        indices: colltypes.Sequence | None,
+        jacobian_scale: FieldType,
+    ) -> FieldType:
         """
         Computes the integral $\\int \\alpha \\nabla \\phi_i \\cdot \\nabla f ~ dV$
         for a field $f$, on this element. The dot product is over the gradients.
@@ -724,7 +725,7 @@ class StaticElement2D(ElementBase, IsoparametricElement):
         field: FieldType,
         X: ArrayLike,
         Y: ArrayLike,
-    ) -> NDArray:
+    ) -> FieldType:
         """Evaluates field at (X,Y) in reference coordinates.
         The result is an array of values `field(X,Y)`.
 
@@ -737,7 +738,7 @@ class StaticElement2D(ElementBase, IsoparametricElement):
             Y (ArrayLike): y values (in reference coordinates).
 
         Returns:
-            NDArray: The interpolated values `field(X,Y)`
+            FieldType: The interpolated values `field(X,Y)`
         """
         self._verify_field_compatibilities(field=field)
         if not isinstance(X, np.ndarray):
@@ -760,7 +761,7 @@ class StaticElement2D(ElementBase, IsoparametricElement):
         field: FieldType,
         X: NDArray,
         Y: NDArray,
-    ) -> NDArray:
+    ) -> FieldType:
         """Evaluates field at (X,Y) in reference coordinates.
         The result is an array of values `field(X,Y)`.
 
@@ -773,7 +774,7 @@ class StaticElement2D(ElementBase, IsoparametricElement):
             Y (NDArray): y values (in reference coordinates).
 
         Returns:
-            NDArray: The interpolated values `field(X,Y)`
+            FieldType: The interpolated values `field(X,Y)`
         """
         raise NotImplementedError
 
@@ -781,7 +782,7 @@ class StaticElement2D(ElementBase, IsoparametricElement):
         self,
         field: FieldType,
         jacobian_scale: FieldType = FieldType(tuple(), tuple(), 1),
-    ) -> NDArray:
+    ) -> FieldType:
         """
         Integrates `field` $f$ over the element. The result is the value of
         $\\int \\alpha f ~dV$ over the element, as an array of shape
@@ -811,8 +812,8 @@ class StaticElement2D(ElementBase, IsoparametricElement):
     def _integrate_field(
         self,
         field: FieldType,
-        jacobian_scale: FieldType = FieldType(tuple(), tuple(), 1),
-    ) -> NDArray:
+        jacobian_scale: FieldType,
+    ) -> FieldType:
         """
         Integrates `field` $f$ over the element. The result is the value of
         $\\int \\alpha f ~dV$ over the element, as an array of shape
@@ -837,7 +838,7 @@ class StaticElement2D(ElementBase, IsoparametricElement):
         field: FieldType,
         indices: colltypes.Sequence | None = None,
         jacobian_scale: FieldType = FieldType(tuple(), tuple(), 1),
-    ) -> NDArray:
+    ) -> FieldType:
         """
         Computes the integral $\\int \\alpha \\phi_i f ~ dV$
         for fields $f$ and $\\alpha$, on this element, given by `field` and
@@ -874,9 +875,9 @@ class StaticElement2D(ElementBase, IsoparametricElement):
     def _integrate_basis_times_field(
         self,
         field: FieldType,
-        indices: colltypes.Sequence | None = None,
-        jacobian_scale: FieldType = FieldType(tuple(), tuple(), 1),
-    ) -> NDArray:
+        indices: colltypes.Sequence | None,
+        jacobian_scale: FieldType,
+    ) -> FieldType:
         """
         Computes the integral $\\int \\alpha \\phi_i f ~ dV$
         for fields $f$ and $\\alpha$, on this element, given by `field` and
@@ -907,7 +908,7 @@ class StaticElement2D(ElementBase, IsoparametricElement):
         self,
         indices: colltypes.Sequence | None = None,
         jacobian_scale: FieldType = FieldType(tuple(), tuple(), 1),
-    ) -> NDArray:
+    ) -> FieldType:
         """
         Recovers the mass matrix entries $\\int \\alpha \\phi_i \\phi_j ~ dV$
         for this element. `pos_field` has shape `(basis_shape,...,2)`, where the
@@ -942,9 +943,9 @@ class StaticElement2D(ElementBase, IsoparametricElement):
 
     def _mass_matrix(
         self,
-        indices: colltypes.Sequence | None = None,
-        jacobian_scale: FieldType = FieldType(tuple(), tuple(), 1),
-    ) -> NDArray:
+        indices: colltypes.Sequence | None,
+        jacobian_scale: FieldType,
+    ) -> FieldType:
         """
         Recovers the mass matrix entries $\\int \\alpha \\phi_i \\phi_j ~ dV$
         for this element. `pos_field` has shape `(basis_shape,...,2)`, where the
@@ -982,14 +983,14 @@ class StaticElement2D(ElementBase, IsoparametricElement):
             None if indices is None else indices[: len(self.basis_shape())],
             jacobian_scale,
         )
-        return mat if indices is None else mat[*indices[len(self.basis_shape()) :]]
+        return mat if indices is None else mat.basis[*indices[len(self.basis_shape()) :]]
 
     def integrate_grad_basis_dot_field(
         self,
         field: FieldType,
         indices: colltypes.Sequence | None = None,
         jacobian_scale: FieldType = FieldType(tuple(), tuple(), 1),
-    ) -> NDArray:
+    ) -> FieldType:
         """
         Computes the integral $\\int \\alpha \\nabla \\phi_i \\cdot f ~ dV$
         for a field $f$, on this element. The dot product takes the last axis of
@@ -1024,9 +1025,9 @@ class StaticElement2D(ElementBase, IsoparametricElement):
     def _integrate_grad_basis_dot_field(
         self,
         field: FieldType,
-        indices: colltypes.Sequence | None = None,
-        jacobian_scale: FieldType = FieldType(tuple(), tuple(), 1),
-    ) -> NDArray:
+        indices: colltypes.Sequence | None,
+        jacobian_scale: FieldType,
+    ) -> FieldType:
         """
         Computes the integral $\\int \\alpha \\nabla \\phi_i \\cdot f ~ dV$
         for a field $f$, on this element. The dot product takes the last axis of
@@ -1056,7 +1057,7 @@ class StaticElement2D(ElementBase, IsoparametricElement):
         field: FieldType,
         indices: colltypes.Sequence | None = None,
         jacobian_scale: FieldType = FieldType(tuple(), tuple(), 1),
-    ) -> NDArray:
+    ) -> FieldType:
         """
         Computes the integral $\\int \\alpha \\nabla \\phi_i \\cdot \\nabla f ~ dV$
         for a field $f$, on this element. The dot product is over the gradients.
@@ -1088,9 +1089,9 @@ class StaticElement2D(ElementBase, IsoparametricElement):
     def _integrate_grad_basis_dot_grad_field(
         self,
         field: FieldType,
-        indices: colltypes.Sequence | None = None,
-        jacobian_scale: FieldType = FieldType(tuple(), tuple(), 1),
-    ) -> NDArray:
+        indices: colltypes.Sequence | None,
+        jacobian_scale: FieldType,
+    ) -> FieldType:
         """
         Computes the integral $\\int \\alpha \\nabla \\phi_i \\cdot \\nabla f ~ dV$
         for a field $f$, on this element. The dot product is over the gradients.
