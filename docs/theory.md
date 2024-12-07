@@ -2,7 +2,7 @@
 
 ## Introduction
 
-Phenomena guided by partial differential equations are omnipresent in a wide variety of scientific fields. While solutions can be found for simple initial and boundary conditions, their complex nature renders an analytical solution extremely difficult to derive, depending on the physics at hand and the geometry of the problem. In these cases, numerical schemes may be adopted to derive an approximate solution and gain insight into the problem, such as the finite element method. 
+Phenomena guided by partial differential equations are omnipresent in a wide variety of scientific fields. While solutions can be found for simple initial and boundary conditions, their complex nature renders an analytical solution extremely difficult to derive, depending on the physics at hand and the geometry of the problem. In these cases, numerical schemes may be adopted to derive an approximate solution and gain insight into the problem, such as the finite element method.
 
 We present a finite element method scheme that will solve a transient heat conduction problem in a two-dimensional domain, which can be formulated as[@lienhard2019heat]:
 
@@ -53,10 +53,10 @@ $$
 Where each function may be expressed as a basis of the shape functions $N_i(x,y)$ of the problem[@simulate2021fem], namely:
 
 $$
-T(x,y,t_c) = \sum_{i=1}^n T_i N_i(x,y)  \\\ \tag{8} 
+T(x,y,t_c) = \sum_{i=1}^n T_i N_i(x,y)  \\\ \tag{8}
 \dot{T}(x,y,t_c) = \sum_{i=1}^n T_i' N_i(x,y)  \\\
 g(x,y) = \sum_{i=1}^n g_i N_i(x,y)  \\\
-v(x,y) = \sum_{i=1}^n v_i N_i(x,y) 
+v(x,y) = \sum_{i=1}^n v_i N_i(x,y)
 $$
 
 For a given time step $t_c$. Substituting the sum, the problem reduces to:
