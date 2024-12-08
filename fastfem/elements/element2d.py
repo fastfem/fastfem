@@ -533,7 +533,9 @@ class Element2D(ElementBase, IsoparametricElement):
             None if indices is None else indices[: len(self.basis_shape())],
             jacobian_scale,
         )
-        return mat if indices is None else mat.basis[*indices[len(self.basis_shape()) :]]
+        return (
+            mat if indices is None else mat.basis[*indices[len(self.basis_shape()) :]]
+        )
 
     def integrate_grad_basis_dot_field(
         self,
@@ -983,7 +985,9 @@ class StaticElement2D(ElementBase, IsoparametricElement):
             None if indices is None else indices[: len(self.basis_shape())],
             jacobian_scale,
         )
-        return mat if indices is None else mat.basis[*indices[len(self.basis_shape()) :]]
+        return (
+            mat if indices is None else mat.basis[*indices[len(self.basis_shape()) :]]
+        )
 
     def integrate_grad_basis_dot_field(
         self,

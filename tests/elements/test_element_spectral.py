@@ -468,8 +468,7 @@ def test_gll_build(deg):
         res_true = 2 / (i + 1)
         assert quad == pytest.approx(res_true, abs=1e-8), (
             "GLL quadrature must be exact for polynomials up to degree 2n-1"
-            f" ({2*deg - 1})! "
-            + f"Failed at degree {i}."
+            f" ({2*deg - 1})! " + f"Failed at degree {i}."
         )
 
     # verify L

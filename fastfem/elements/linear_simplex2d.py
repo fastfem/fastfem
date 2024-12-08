@@ -56,17 +56,25 @@ class LinearSimplex2D(Element2D):
     def _integrate_field(self, pos_field, field, jacobian_scale=...):
         coefs = (np.ones((3, 3)) + np.eye(3)) / 24
         fieldpad = (np.newaxis,) * len(field.field_shape)
-        return Field(tuple(),field.field_shape,np.einsum(
-            "...,ij,i...,j...->...",
-            np.abs(
-                np.linalg.det(self._compute_field_gradient(pos_field).coefficients)[
-                    ..., *fieldpad
-                ]
+        return Field(
+            tuple(),
+            field.field_shape,
+            np.einsum(
+                "...,ij,i...,j...->...",
+                np.abs(
+                    np.linalg.det(self._compute_field_gradient(pos_field).coefficients)[
+                        ..., *fieldpad
+                    ]
+                ),
+                coefs,
+                fnp.moveaxis(
+                    field, (ShapeComponent.BASIS, 0), (ShapeComponent.STACK, 0)
+                ).coefficients,
+                fnp.moveaxis(
+                    field, (ShapeComponent.BASIS, 0), (ShapeComponent.STACK, 0)
+                ).coefficients[..., *fieldpad],
             ),
-            coefs,
-            fnp.moveaxis(field,(ShapeComponent.BASIS,0),(ShapeComponent.STACK,0)).coefficients,
-            fnp.moveaxis(field,(ShapeComponent.BASIS,0),(ShapeComponent.STACK,0)).coefficients[..., *fieldpad],
-        ))
+        )
 
     def _integrate_basis_times_field(
         self, pos_field, field, indices=None, jacobian_scale=...
