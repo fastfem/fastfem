@@ -528,15 +528,6 @@ class Surface:
     domain_name: Optional[str] = None
 
     def __post_init__(self):
-        """Create a surface with the given lines.
-
-        Args:
-            lines: The lines that form the surface. The lines must be
-                connected (each line's end point is the start point of the next line).
-            transfinite: If True, the surface will be transfinite. All the lines'
-                number_of_nodes argument must be provided if the surface is transfinite.
-                Defaults to False.
-        """
         # Make sure all the lines are transfinite if the surface is transfinite
         if self.transfinite:
             lines_are_all_transfinite = all(
