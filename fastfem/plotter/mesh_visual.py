@@ -1,6 +1,7 @@
 import numpy as np
 import pyvista as pv
 from pyvista import CellType
+import time
 
 
 class VisualMesh:
@@ -11,21 +12,19 @@ class VisualMesh:
 
         Args:
             mesh: The mesh object.
+
+        Returns:
+            None
         """
 
         self.mesh = mesh
 
-    def define_plotter(self) -> tuple[pv.UnstructuredGrid, pv.Plotter]:
+    def define_plotter(self) -> pv.UnstructuredGrid:
         """
-        Plots the mesh
-
-
-        Args:
-            Color: List containing the colors of the mesh and edges, respectively.
-            point_label: Boolean value to determine whether the points are labeled or not.
+        Given the Mesh object, redefines it for PyVista plotting.
 
         Returns:
-            None
+            grid: PyVista grid object.
         """
 
         # Recovering element type
@@ -50,12 +49,15 @@ class VisualMesh:
 
         # Create the unstructured grid
         grid = pv.UnstructuredGrid(cell_arr, cell_types, points)
-        plotter = pv.Plotter()
 
-        return grid, plotter
+        return grid
 
     def plot_mesh(
-        self, point_label=None, mesh_color=None, edge_color=None, edge_thickness=None
+        self,
+        point_label: bool = False,
+        mesh_color: str = "white",
+        edge_color: str = "black",
+        edge_thickness: int = 1,
     ) -> None:
         """
         Plots the mesh
@@ -66,24 +68,10 @@ class VisualMesh:
             edge_color: Color of the edges.
             edge_thickness: Thickness of the edges.
             point_label: Boolean value to determine whether the points are labeled or not.
-
-        Returns:
-            None
         """
-
-        # Check aesthetics parameters
-        if point_label is None:
-            point_label = False
-        if mesh_color is None:
-            mesh_color = "white"
-        if edge_color is None:
-            edge_color = "black"
-        if edge_thickness is None:
-            edge_thickness = 1
-
         # Define the grid and plotter objects
-        grid = self.define_plotter()[0]
-        plotter = self.define_plotter()[1]
+        grid = self.define_plotter()
+        plotter = pv.Plotter()
         plotter.add_mesh(
             grid,
             show_edges=True,
@@ -94,6 +82,7 @@ class VisualMesh:
 
         # Add point labels, if specified
         points = grid.points
+
         if point_label:
             mask = points[:, 2] == 0  # Labeling points on xy plane
             plotter.add_point_labels(
@@ -102,30 +91,57 @@ class VisualMesh:
         plotter.camera_position = "xy"
         plotter.show()
 
-    def plot_data(self, data: np.ndarray) -> None:
+    def plot_data(self, data: np.ndarray, show=True) -> None:
         """
         Plots the mesh with temperature data, for a single time step.
 
         Args:
-            data: The temperature data for each node.
-
-        Returns:
-            None
-
+            data: The temperature data for each node, contained in a 1D array.
         """
-
         # Define the grid and plotter objects
-        grid = self.define_plotter()[0]
-        plotter = self.define_plotter()[1]
+        grid = self.define_plotter()
+        plotter = pv.Plotter()
 
         # Assign temperature data to the grid
-        grid.point_data["temperature"] = data.flatten("F")
-        plotter.add_mesh(grid, scalars=grid.points, cmap="coolwarm")
+        grid.point_data["Temperature"] = data.flatten("F")
+        plotter.add_mesh(grid, scalars="Temperature", cmap="coolwarm")
         plotter.camera_position = "xy"
-        plotter.show()
 
-    def animate_mesh(self, data: tuple[float, ...], file_path: str) -> None:
-        pass
+        if show:
+            plotter.show()
+
+    def animate_mesh(
+        self, fps: float, frames: int, data: np.ndarray, cmap: str = "viridis"
+    ) -> None:
+        """
+        Plots the mesh with temperature data, for successive time steps.
+
+        Args:
+            fps: Frames per second for the animation.
+            frames: Number of time steps (frames).
+            data: The temperature data for each node, contained in a 2D array.
+            cmap: Colormap for the data.
+        """
+        # Define the grid and plotter objects
+        grid = self.define_plotter()
+        plotter = pv.Plotter()
+
+        # Assign temperature data to the grid
+        grid.point_data["Temperature"] = data[0].flatten("F")
+        plotter.add_mesh(grid, scalars="Temperature", cmap=cmap)
+
+        # Animate
+        plotter.camera_position = "xy"
+        plotter.show(auto_close=False, interactive_update=True)
+        plotter.update()
+
+        for i in range(1, frames):
+            grid.point_data["Temperature"] = data[i].flatten("F")
+            plotter.update_scalars(data[i].flatten("F"), mesh=grid, render=True)
+            plotter.update()
+            time.sleep(1 / fps)
+
+        plotter.close()
 
     def make_gif(self):
         pass
