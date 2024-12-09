@@ -1,0 +1,3 @@
+# `fastfem.elements`
+
+::: fastfem.elements

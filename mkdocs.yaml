@@ -9,12 +9,19 @@ edit_uri: edit/main/docs/
 
 nav:
   - Home: index.md
-  - Theory: theory.md
-  - User Guide: user_guide/index.md
+  - Theory:
+      - Theory: theory/index.md
+  - User Guide:
+      - User Guide: user_guide/index.md
   - Developer Guide:
       - Developer Guide: developer_guide/index.md
       - Writing Documentation: developer_guide/writing_documentation.md
-  - API Reference: api_reference/index.md
+  - API Reference:
+      - API Reference: api_reference/index.md
+      - mesh: api_reference/mesh.md
+      - elements: api_reference/elements.md
+      - fields: api_reference/fields.md
+      - plotter: api_reference/plotter.md
   - Changelog: changelog.md
 
 theme:
@@ -23,15 +30,15 @@ theme:
   palette:
     - media: "(prefers-color-scheme: light)"
       scheme: default
-      primary: indigo
-      accent: indigo
+      primary: cyan
+      accent: cyan
       toggle:
         icon: material/lightbulb-outline
         name: "Switch to dark mode"
     - media: "(prefers-color-scheme: dark)"
       scheme: slate
-      primary: indigo
-      accent: indigo
+      primary: cyan
+      accent: cyan
       toggle:
         icon: material/lightbulb
         name: "Switch to light mode"
@@ -49,6 +56,7 @@ theme:
     - navigation.instant # instant navigation for faster page loads
     - navigation.instant.prefetch # prefetch pages for instant navigation
     - navigation.instant.progress # show progress bar for instant navigation
+    - navigation.sections # make sidebar expanded by default
     - navigation.top # back to top button
     - search.highlight # highlight search results after going to a page
     - search.suggest # show search suggestions while typing
@@ -109,5 +117,5 @@ extra_javascript:
   - https://unpkg.com/katex@0/dist/contrib/auto-render.min.js
 
 extra_css:
+  - assets/stylesheets/fastfem.css
   - https://unpkg.com/katex@0/dist/katex.min.css
-
