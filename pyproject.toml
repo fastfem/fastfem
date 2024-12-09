@@ -19,6 +19,7 @@ dependencies = [
     "matplotlib==3.9.3",
     "gmsh==4.13.1",
     "pyvista==0.44.2",
+    "imageio==2.36.1",
 ]
 authors = [
     { name = 'Sina Atalay', email = 'dev@atalay.biz' },
