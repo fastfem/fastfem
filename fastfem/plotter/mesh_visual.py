@@ -2,6 +2,7 @@ import numpy as np
 import pyvista as pv
 from pyvista import CellType
 
+
 class VisualMesh:
     def __init__(self, mesh):
         """
@@ -11,9 +12,8 @@ class VisualMesh:
         Args:
             mesh: The mesh object.
         """
-        
-        self.mesh = mesh
 
+        self.mesh = mesh
 
     def define_plotter(self) -> tuple[pv.UnstructuredGrid, pv.Plotter]:
         """
@@ -42,9 +42,11 @@ class VisualMesh:
 
         # 0-indexing the strips
         strips_flat = strips.ravel() - 1
-        cells = np.insert(strips_flat, np.arange(0, len(strips_flat), side_number), side_number)
+        cells = np.insert(
+            strips_flat, np.arange(0, len(strips_flat), side_number), side_number
+        )
         cell_arr = np.array(cells, dtype=np.int32)
-        cell_types = np.full(len(strips), cell_type, dtype=np.uint8) 
+        cell_types = np.full(len(strips), cell_type, dtype=np.uint8)
 
         # Create the unstructured grid
         grid = pv.UnstructuredGrid(cell_arr, cell_types, points)
@@ -52,8 +54,9 @@ class VisualMesh:
 
         return grid, plotter
 
-
-    def plot_mesh(self, point_label=None, mesh_color=None, edge_color=None, edge_thickness=None) -> None:
+    def plot_mesh(
+        self, point_label=None, mesh_color=None, edge_color=None, edge_thickness=None
+    ) -> None:
         """
         Plots the mesh
 
@@ -77,20 +80,27 @@ class VisualMesh:
             edge_color = "black"
         if edge_thickness is None:
             edge_thickness = 1
-        
+
         # Define the grid and plotter objects
         grid = self.define_plotter()[0]
         plotter = self.define_plotter()[1]
-        plotter.add_mesh(grid, show_edges=True, color=mesh_color, edge_color=edge_color, line_width=edge_thickness) 
+        plotter.add_mesh(
+            grid,
+            show_edges=True,
+            color=mesh_color,
+            edge_color=edge_color,
+            line_width=edge_thickness,
+        )
 
         # Add point labels, if specified
         points = grid.points
         if point_label:
-            mask = points[:, 2] == 0 # Labeling points on xy plane
-            plotter.add_point_labels(points[mask], points[mask].tolist(), point_size=20, font_size=10)
-        plotter.camera_position = 'xy'
+            mask = points[:, 2] == 0  # Labeling points on xy plane
+            plotter.add_point_labels(
+                points[mask], points[mask].tolist(), point_size=20, font_size=10
+            )
+        plotter.camera_position = "xy"
         plotter.show()
-
 
     def plot_data(self, data: np.ndarray) -> None:
         """
@@ -109,19 +119,16 @@ class VisualMesh:
         plotter = self.define_plotter()[1]
 
         # Assign temperature data to the grid
-        grid.point_data['temperature'] = data.flatten('F')
-        plotter.add_mesh(grid, scalars=grid.points, cmap='coolwarm')
-        plotter.camera_position = 'xy'
+        grid.point_data["temperature"] = data.flatten("F")
+        plotter.add_mesh(grid, scalars=grid.points, cmap="coolwarm")
+        plotter.camera_position = "xy"
         plotter.show()
-    
 
     def animate_mesh(self, data: tuple[float, ...], file_path: str) -> None:
         pass
 
-
     def make_gif(self):
         pass
-
 
     def save(self, file_name):
         pass
