@@ -1,0 +1,24 @@
+{
+    "image": "registry.gitlab.com/islandoftex/images/texlive:latest",
+    "name": "LaTeX",
+    // "workspaceFolder": "/workspace",
+    "customizations": {
+        "vscode": {
+            "extensions": [
+                "james-yu.latex-workshop",
+                "tomoki1207.pdf"
+            ],
+            "settings": {
+                "latex-workshop.latex.outDir": "%DIR%/../output",
+                "latex-workshop.latex.recipes": [
+                    {
+                        "name": "latexmk (lualatex)",
+                        "tools": [
+                            "lualatexmk"
+                        ]
+                    }
+                ]
+            }
+        }
+    }
+}
