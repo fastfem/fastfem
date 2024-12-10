@@ -1,7 +1,8 @@
 \documentclass[headings=standardclasses, abstract=true]{scrartcl}
 
 \usepackage{graphicx} % Required for inserting images
-\usepackage{biblatex} % Required for bibliography
+\usepackage[sorting=none, style=ieee]{biblatex} % Required for bibliography
+\usepackage{amsmath} % for math equations
 \addbibresource{../docs/assets/bibliography.bib} % Path to the bibliography file
 \usepackage[
     pdfauthor={Sina Atalay},
@@ -31,13 +32,38 @@
 
 \section{Introduction}
 
-Seda luctus nisl vel sodales laoreet. Cras at dui ut lorem pulvinar lobortis sit amet sed augue. Curabitur in mi sed ex pharetra pharetra. Nunc nec luctus turpis. Cras blandit lacinia magna, vel gravida risus porta at. Etiam consequat fringilla lectus finibus imperdiet. Etiam in metus neque. Cras erat justo, scelerisque eu fermentum vitae, vestibulum sit amet ex. Phasellus ac leo non quam cursus suscipit ac a augue \cite{Serway2014}.
+Partial differential equations (PDEs) are the fundamental tools for mathematically modeling natural phenomena. Many fundamental phenomena observed in nature, such as general relativity \cite{Marolf2001}, quantum mechanics \cite{Feit1982}, heat diffusion \cite{Bergman2011}, fluid mechanics \cite{Lukaszewicz2016}, pricing of financial derivative contracts \cite{Barles1998}, structural analysis \cite{Boresi2002}, and electromagnetism \cite{Griffiths2017}, are described by PDEs. However, most of these PDEs do not have closed-form solutions, especially in complex geometries. Therefore, engineers have developed many numerical methods for solving PDEs. One of the most popular numerical methods among them is the finite-element method (FEM), which originated in the early 1940s \cite{Liu2022}. FEM is capable of solving non-linear PDEs in highly complex geometries. Since the 1940s, FEM has undergone significant advancements and has revolutionized the way scientific modeling and engineering design. Today, it is widely used in many industrial applications.
 
-Ut elementum et nisi vitae rutrum. Sed laoreet vestibulum felis non vehicula. Praesent efficitur ipsum vel tortor tincidunt, sed aliquam felis vulputate. Aliquam sed cursus sem, ut tempus enim. Fusce fermentum imperdiet elit, id pellentesque magna posuere quis. Suspendisse id posuere orci. Quisque lacinia viverra metus, nec volutpat nunc consequat sit amet. Donec mollis nec diam vitae sagittis. Proin viverra, tellus id rhoncus pulvinar, erat metus faucibus augue, eleifend consectetur lorem risus ut metus. Morbi lobortis metus ex, at ornare ipsum porta vel. Aliquam ultricies ipsum sapien, quis scelerisque orci pharetra nec. Phasellus faucibus mi id molestie lobortis. Duis aliquam eleifend libero, at congue nunc ultrices vulputate.
+Currently, there are many open-source FEM software out there \cite{fem_getdp, fem_agros, fem_calculix, fem_elmerfem, fem_freefem, fem_goma, fem_fenicsx, fem_dealii}. With \texttt{FastFEM}, we attempt to develop another FEM with the goal of
 
-Aliquam erat volutpat. Vestibulum vitae orci in tortor fermentum varius. Nunc congue ligula eu lectus auctor placerat. Maecenas sodales nisi eget nisl facilisis congue. Maecenas lacinia ex ut eleifend semper. Aliquam nibh est, laoreet a interdum tincidunt, sodales sit amet nulla. Etiam at aliquam ligula. Nam scelerisque, ante nec sollicitudin aliquam, mi est vulputate sapien, et ultrices mi justo convallis libero. Vestibulum sed aliquam urna. Sed hendrerit sed augue vel sagittis. Duis tellus ipsum, varius vel dui eget, tempus consectetur est. Nunc quis mauris venenatis, condimentum sem eu, aliquam nisl. Quisque sapien lectus, maximus at urna in, placerat sagittis erat.
+\begin{itemize}
+    \item Creating an easy-to-use and clean Python interface
+    \item Using modern tools like JAX \cite{jax2018github} for advanced array computing with automatic differentiation capabilities
+\end{itemize}
 
-Nam aliquet, felis a vestibulum finibus, purus lacus convallis nibh, sed dapibus est nulla id odio. Nam venenatis tempor augue quis eleifend. Vestibulum porta lacinia ante quis semper. Quisque nunc ex, commodo nec ante ut, ornare lacinia eros. Mauris facilisis nisi quis mollis semper. Morbi at nisl facilisis, hendrerit augue sed, egestas urna. Vivamus et nibh eu eros eleifend dictum. Duis porttitor augue enim, ut aliquam ligula eleifend id. Sed mattis libero non neque ultrices, sit amet imperdiet ante pulvinar. Vestibulum euismod eget neque id ultrices. Aenean interdum mauris vitae est imperdiet, scelerisque viverra lorem condimentum.
+One of the motivations for creating a Python interface was the capability of the language to create very intuitive-to-use interfaces. A modern Python interface can offer users a great way of describing FEM problems. The other motivation was leveraging the existing scientific Python environment. Python's popularity in the scientific world is still increasing, and modern libraries with state-of-the-art technologies like JAX, PyVista \cite{Sullivan2019}, etc., are being developed.
+
+
+FastFEM is planned to be a big project, but as the goal of \texttt{v0.0.1}, we decided to focus on 2D parabolic PDEs. Parabolic PDEs, such as the heat diffusion equation, Poisson's equation, and the Black-Scholes equation, are very common in various applications. A 2-dimensional parabolic PDE can be expressed as
+
+\begin{equation*}
+    \frac{\partial^2 f(x,y,t)}{\partial x^2} + \frac{\partial^2 f(x,y,t)}{\partial y^2}
+    =
+    h(f) \frac{\partial f(x,y,t)}{\partial t} + g(x,y)
+    \label{pde}
+\end{equation*}
+where $f(x,y,t)$, $h(f)$, and $g(x,y)$ are scalar functions, $x$ and $y$ are spatial coordinates, and $t$ is time.
+
+\texttt{FastFEM v.0.0.1}
+\begin{enumerate}
+    \item creates a 2D mesh,
+    \item takes initial conditions, boundary conditions, h(f), and g(x,y) as inputs,
+    \item solves the PDE with FEM, and
+    \item plots the solution.
+\end{enumerate}
+
+
+In this report, the theory behind FEM is summarized. The features and capabilities of FastFEM are presented. Some example results are shown. Finally, the conclusion and outlook are discussed.
 
 \section{Theory}
 
