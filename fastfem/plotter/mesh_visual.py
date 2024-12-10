@@ -1,20 +1,18 @@
 import numpy as np
 import pyvista as pv
 from pyvista import CellType
+import fastfem.mesh as m
 import time
 
 
 class VisualMesh:
-    def __init__(self, mesh):
+    def __init__(self, mesh: m.Mesh) -> None:
         """
         Initialize the plotter with the mesh.
 
 
         Args:
             mesh: The mesh object.
-
-        Returns:
-            None
         """
 
         self.mesh = mesh
@@ -69,6 +67,7 @@ class VisualMesh:
             edge_thickness: Thickness of the edges.
             point_label: Boolean value to determine whether the points are labeled or not.
         """
+
         # Define the grid and plotter objects
         grid = self.define_plotter()
         plotter = pv.Plotter()
@@ -98,6 +97,7 @@ class VisualMesh:
         Args:
             data: The temperature data for each node, contained in a 1D array.
         """
+
         # Define the grid and plotter objects
         grid = self.define_plotter()
         plotter = pv.Plotter()
@@ -122,6 +122,7 @@ class VisualMesh:
             data: The temperature data for each node, contained in a 2D array.
             cmap: Colormap for the data.
         """
+
         # Define the grid and plotter objects
         grid = self.define_plotter()
         plotter = pv.Plotter()
