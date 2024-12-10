@@ -28,11 +28,11 @@ class Rectangle:
         horizontal_length (float): The horizontal length of the rectangle.
         vertical_length (float): The vertical length of the rectangle.
         nodes_in_horizontal_direction (int, optional): The number of nodes in the
-        horizontal direction. Defaults to None.
+            horizontal direction. Defaults to None.
         nodes_in_vertical_direction (int, optional): The number of nodes in the vertical
-        direction. Defaults to None.
+            direction. Defaults to None.
         element_type (TwoDElementType, optional): The type of element to use. Defaults
-        to "quadrangle".
+            to "quadrangle".
     """
 
     horizontal_length: float
@@ -87,11 +87,11 @@ class Square(Rectangle):
     Args:
         side_length (float): The side length of the square.
         nodes_in_horizontal_direction (int, optional): The number of nodes in the
-        horizontal direction. Defaults to None.
+            horizontal direction. Defaults to None.
         nodes_in_vertical_direction (int, optional): The number of nodes in the vertical
-        direction. Defaults to None.
+            direction. Defaults to None.
         element_type (TwoDElementType, optional): The type of element to use. Defaults
-        to "quadrangle".
+            to "quadrangle".
     """
 
     side_length: float
@@ -206,9 +206,9 @@ def create_a_square_mesh(
     Args:
         side_length: The side length of the square.
         nodes_in_horizontal_direction: The number of nodes in the horizontal direction.
-        Defaults to None.
+            Defaults to None.
         nodes_in_vertical_direction: The number of nodes in the vertical direction.
-        Defaults to None.
+            Defaults to None.
         element_type: The type of element to use. Defaults to "quadrangle".
     """
     horizontal_length = side_length

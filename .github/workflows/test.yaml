@@ -19,36 +19,13 @@ permissions:
 
 # The workflow:
 jobs:
-  lint:
-    name: Lint with Ruff (Py${{ matrix.python-version }})
-    runs-on: ubuntu-latest
-    strategy:
-      fail-fast: false
-      matrix:
-        python-version: ["3.12", "3.13"]
-    steps:
-      - uses: actions/checkout@v4
-
-      - name: Set up Python ${{ matrix.python-version }}
-        uses: actions/setup-python@v5
-        with:
-          python-version: ${{ matrix.python-version }}
-
-      - name: Install Hatch
-        uses: pypa/hatch@install
-
-      - name: Lint with Ruff
-        run: |
-          hatch run lint
-
   test:
-    name: Test with Py${{ matrix.python-version }} on ${{ matrix.os }}
+    name: Test on ${{ matrix.os }}
 
     strategy:
       fail-fast: false
       matrix:
         os: [ubuntu, windows, macos]
-        python-version: ["3.12", "3.13"]
 
     runs-on: ${{ matrix.os }}-latest
     steps:
@@ -58,26 +35,21 @@ jobs:
 
       - uses: actions/checkout@v4
 
-      - name: Set up Python ${{ matrix.python-version }}
-        uses: actions/setup-python@v5
-        with:
-          python-version: ${{ matrix.python-version }}
-
       - name: Install Hatch
         uses: pypa/hatch@install
 
       - name: Test
-        run: hatch run coverage run -m pytest
+        run: hatch run test-and-report
 
       - name: Rename the coverage file
-        run: mv .coverage .coverage.${{ matrix.python-version }}.${{ matrix.os }}
+        run: mv .coverage .coverage.${{ matrix.os }}
 
       - name: Store coverage files
         uses: actions/upload-artifact@v4
         with:
           include-hidden-files: true
-          name: coverage-${{ matrix.python-version }}-${{ matrix.os }}
-          path: .coverage.${{ matrix.python-version }}.${{ matrix.os }}
+          name: coverage-${{ matrix.os }}
+          path: .coverage.${{ matrix.os }}
 
   report-coverage:
     name: Generate the coverage report
@@ -86,11 +58,6 @@ jobs:
 
     steps:
       - uses: actions/checkout@v4
-
-      - name: Set up Python 3.12
-        uses: actions/setup-python@v5
-        with:
-          python-version: "3.12"
 
       - name: Download coverage files
         uses: actions/download-artifact@v4
@@ -114,6 +81,6 @@ jobs:
           smokeshow upload ./htmlcov
         env:
           SMOKESHOW_GITHUB_STATUS_DESCRIPTION: Coverage {coverage-percentage}
-          SMOKESHOW_GITHUB_COVERAGE_THRESHOLD: 50
+          SMOKESHOW_GITHUB_COVERAGE_THRESHOLD: 95
           SMOKESHOW_GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           SMOKESHOW_GITHUB_PR_HEAD_SHA: ${{ github.event.pull_request.head.sha }}
