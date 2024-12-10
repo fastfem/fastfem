@@ -241,7 +241,12 @@ class VisualMesh:
         plotter.close()
 
     def make_gif(
-        self, filename: str, fps: float, total_time: float, data: np.ndarray, cmap: str = "viridis"
+        self,
+        filename: str,
+        fps: float,
+        total_time: float,
+        data: np.ndarray,
+        cmap: str = "viridis",
     ) -> None:
         """
         Creates a GIF with the given mesh and temperature data.
