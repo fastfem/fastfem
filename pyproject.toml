@@ -22,19 +22,19 @@ dependencies = [
 ]
 authors = [
     { name = 'Sina Atalay', email = 'dev@atalay.biz' },
-    { name = "Kentaro Hanson", email = "example@example.com" },
-    { name = "Sacha Escudier", email = "example@example.com" },
+    { name = "Kentaro Hanson" },
+    { name = "Sacha Escudier" },
 ]
 name = 'fastfem'
 description = 'A Python package for solving PDEs with the finite element method and automatic differentiation'
 license = "Apache-2.0"
 readme = "README.md"
-requires-python = '>=3.12'
+requires-python = '>=3.12,<3.13'
 classifiers = [
     "Intended Audience :: Science/Research",
     "Intended Audience :: Education",
     "Programming Language :: Python :: 3.12",
-    "Programming Language :: Python :: 3.13",
+    # "Programming Language :: Python :: 3.13",
     "License :: OSI Approved :: Apache Software License",
     "Operating System :: OS Independent",
 ] # Go to https://pypi.org/classifiers/ to see all classifiers
@@ -50,12 +50,13 @@ Changelog = 'https://fastfem.com/changelog'
 # ======================================================================================
 
 [tool.hatch.envs.default]
+installer = "uv"
+python = "3.12"
 # Dependencies to be installed in the `default` virtual environment.
 dependencies = [
     "ruff",     # to lint the code
     "black",    # to format the code
     "ipython",  # for ipython shell
-    "isort",    # to sort the imports
     "pyright",  # to check the types
     "pytest",   # to run the tests
     "coverage", # to measure the test coverage
@@ -63,20 +64,20 @@ dependencies = [
 path = ".venv"
 [tool.hatch.envs.default.scripts]
 # Format all the code with `black`:
-format = "black fastfem && black tests" # hatch run format
+format = "ruff check --fix && black fastfem tests" # hatch run format
 # Lint the code with `ruff`:
 lint = "ruff check fastfem && ruff check tests" # hatch run lint
-# Sort the imports with `isort`:
-sort = "isort fastfem && isort tests" # hatch run sort
 # Check types with `pyright`:
-check-types = "pyright fastfem && pyright tests" # hatch run check-types
+check-types = "pyright fastfem tests" # hatch run check-types
 # Run the tests:
-tests = "pytest" # hatch run tests
+test = "pytest" # hatch run tests
 # Run the tests and generate the coverage report as HTML:
-tests-and-coverage = "coverage run -m pytest && coverage report && coverage html --show-contexts" # hatch run tests-and-coverage
+test-and-report = "coverage run -m pytest && coverage report && coverage html --show-contexts" # hatch run tests-and-coverage
 
 
 [tool.hatch.envs.docs]
+installer = "uv"
+python = "3.12"
 # Dependencies to be installed in the `docs` virtual environment.
 dependencies = [
     "mkdocs-material==9.5.39",     # docs engine and theme
@@ -98,6 +99,12 @@ serve = "mkdocs serve" # hatch run docs:serve
 
 [tool.ruff]
 output-format = "github"
+line-length = 88
+
+[tool.ruff.format]
+docstring-code-format = true
+
+[tool.ruff.lint]
 # extend-select = [
 #     "B",   # flake8-bugbear
 #     "I",   # isort
@@ -125,9 +132,10 @@ output-format = "github"
 # ignore = [
 #     "PLR",    # Design related pylint codes
 #     "ISC001", # Conflicts with formatter
+#     "UP007",  # Allow `Optional` type
+#     "PGH003", # Allow type: ignore comments
 # ]
-# flake8-unused-arguments.ignore-variadic-names = true
-# isort.required-imports = ["from __future__ import annotations"]
+flake8-unused-arguments.ignore-variadic-names = true
 
 [tool.black]
 line-length = 88 # maximum line length
@@ -135,9 +143,6 @@ preview = true # to allow enable-unstable-feature
 enable-unstable-feature = [
     "string_processing",
 ] # to break strings into multiple lines
-
-[tool.isort]
-profile = "black"
 
 [tool.pyright]
 # No options are needed for `pyright` for now.
@@ -156,7 +161,6 @@ exclude_lines = [
     "return __all__",
     "raise NotImplementedError",
 ]
-
 
 [tool.pytest.ini_options]
 addopts = [
