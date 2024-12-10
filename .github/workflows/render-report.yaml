@@ -1,0 +1,31 @@
+name: Render PDF
+
+on:
+  workflow_call: # to make the workflow triggerable from other workflows
+  workflow_dispatch: # to make the workflow triggerable manually
+  push:
+    branches:
+      - "main" # Run on push to the main branch
+  pull_request:
+    branches:
+      - "*" # Run on pull request to any branch
+
+jobs:
+  render:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+    
+      - name: Render PDF
+        uses: devcontainers/ci@v0.3
+        with:
+          # Change this to be your CI task/script
+          runCmd: latexmk -lualatex report/main.tex
+
+      - name: Upload PDF artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: PDF
+          path: main.pdf
