@@ -144,15 +144,15 @@ def test_field_reshaping_errors():
                 if np.prod(a, dtype=int) > 1:
                     adiff = tuple(ax + 1 for ax in a)
                     with pytest.raises(field.FieldShapeError):
-                        fa.broadcast_to_shape(adiff, a_, a__)
+                        fa.broadcast_to_shape(a_, adiff, a__)
                 if np.prod(a_, dtype=int) > 1:
                     a_diff = tuple(ax + 1 for ax in a_)
                     with pytest.raises(field.FieldShapeError):
-                        fa.broadcast_to_shape(a, a_diff, a__)
+                        fa.broadcast_to_shape(a_diff, a, a__)
                 if np.prod(a__, dtype=int) > 1:
                     a__diff = tuple(ax + 1 for ax in a__)
                     with pytest.raises(field.FieldShapeError):
-                        fa.broadcast_to_shape(a, a_, a__diff)
+                        fa.broadcast_to_shape(a_, a, a__diff)
 
 
 def test_field_broadcast_full_on_doubles(comparison_two_shapes):
@@ -178,7 +178,7 @@ def test_field_broadcast_full_on_doubles(comparison_two_shapes):
                 assert fa == fa2
                 assert fb == fb2
                 fa3 = fa.broadcast_to_shape(
-                    fa2.basis_shape, fa2.stack_shape, fa2.field_shape
+                    fa2.stack_shape, fa2.basis_shape, fa2.field_shape
                 )
                 assert fa3 == fa2
             else:
@@ -218,5 +218,5 @@ def test_field_accessors():
                 slicepad = tuple(slice(None) for _ in a + b)
                 for cmod in random_accessors(5, c):
                     np.testing.assert_allclose(
-                        f.tensor[*cmod].coefficients, f.coefficients[*slicepad, *cmod]
+                        f.point[*cmod].coefficients, f.coefficients[*slicepad, *cmod]
                     )
