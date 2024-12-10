@@ -1,12 +1,12 @@
-import fastfem.mesh as m
-import fastfem.plotter as p
 import numpy as np
 
+import fastfem.mesh as m
+import fastfem.plotter as p
 
-nh = 10
-nv = 10
-hl = 3
-vl = 3
+nh = 20
+nv = 20
+hl = 2
+vl = 1
 mesh = m.create_a_rectangle_mesh(
     horizontal_length=hl,
     vertical_length=vl,
@@ -29,12 +29,14 @@ visualizer = p.VisualMesh(mesh)
 visualizer.plot_mesh()
 
 # Time
-time_steps = 240
+total_time = 3
+fps = 25
+time_steps = int(total_time * fps)
 temperatures = np.zeros((time_steps, nv, nh))
 
 # Dummy data
 left_right_temp = 15
-top_temp = 10
+top_temp = 5
 bottom_temp = 25
 for t in range(time_steps):
     for i in range(nv):
@@ -53,4 +55,10 @@ for t in range(time_steps):
                 ) * np.sin(np.pi * t / time_steps)
 
 
-visualizer.animate_mesh(30, time_steps, temperatures)
+visualizer.animate_mesh(fps, total_time, temperatures)
+
+filename_movie = "filename_movie.mp4"
+visualizer.make_movie(filename_movie, fps, total_time, temperatures)
+
+filename_gif = "filename_gif.gif"
+visualizer.make_gif(filename_gif, fps, total_time, temperatures)

@@ -90,36 +90,12 @@ class VisualMesh:
         plotter.camera_position = "xy"
         plotter.show()
 
-    def plot_data(self, data: np.ndarray, show=True) -> None:
+    def plot_data(self, data: np.ndarray, cmap: str = "viridis") -> None:
         """
         Plots the mesh with temperature data, for a single time step.
 
         Args:
             data: The temperature data for each node, contained in a 1D array.
-        """
-
-        # Define the grid and plotter objects
-        grid = self.define_plotter()
-        plotter = pv.Plotter()
-
-        # Assign temperature data to the grid
-        grid.point_data["Temperature"] = data.flatten("F")
-        plotter.add_mesh(grid, scalars="Temperature", cmap="coolwarm")
-        plotter.camera_position = "xy"
-
-        if show:
-            plotter.show()
-
-    def animate_mesh(
-        self, fps: float, frames: int, data: np.ndarray, cmap: str = "viridis"
-    ) -> None:
-        """
-        Plots the mesh with temperature data, for successive time steps.
-
-        Args:
-            fps: Frames per second for the animation.
-            frames: Number of time steps (frames).
-            data: The temperature data for each node, contained in a 2D array.
             cmap: Colormap for the data.
         """
 
@@ -128,24 +104,184 @@ class VisualMesh:
         plotter = pv.Plotter()
 
         # Assign temperature data to the grid
-        grid.point_data["Temperature"] = data[0].flatten("F")
-        plotter.add_mesh(grid, scalars="Temperature", cmap=cmap)
+        grid.point_data["Temperature"] = data.flatten("F")
+        plotter.add_mesh(
+            mesh=grid,
+            scalars="Temperature",
+            cmap=cmap,
+            scalar_bar_args={
+                "vertical": False,
+                "title": "Temperature",
+                "title_font_size": 25,
+                "label_font_size": 10,
+            },
+        )
+        plotter.camera_position = "xy"
 
-        # Animate
+    def animate_mesh(
+        self, fps: float, total_time: float, data: np.ndarray, cmap: str = "viridis"
+    ) -> None:
+        """
+        Plots the mesh with temperature data, for successive time steps.
+
+        Args:
+            fps: Frames per second for the animation.
+            total_time: Total time for the animation.
+            data: The temperature data for each node, contained in a 2D array.
+            cmap: Colormap for the data.
+        """
+
+        if fps > 25:
+            raise ValueError("The maximum value for fps is 25.")
+
+        # Define the grid and plotter objects
+        grid = self.define_plotter()
+        plotter = pv.Plotter()
+
+        # Defining the number of time steps
+        frames = int(total_time * fps)
+
+        # Assign temperature data to the grid
+        grid.point_data["Temperature"] = data[0].flatten("F")
+        plotter.add_mesh(
+            mesh=grid,
+            color="red",
+            render_points_as_spheres=True,
+            point_size=10,
+            scalars="Temperature",
+            cmap=cmap,
+            scalar_bar_args=dict(
+                title_font_size=20,
+                label_font_size=16,
+                n_labels=3,
+                italic=True,
+                fmt="%.2f",
+                font_family="arial",
+            ),
+        )
+
+        # Setting plotter settings
         plotter.camera_position = "xy"
         plotter.show(auto_close=False, interactive_update=True)
-        plotter.update()
+        plotter.render()
+        text_actor = None
 
+        # Animate
         for i in range(1, frames):
+            # Starting a timer, accounting for the time taken to render the frame
+            start_time = time.time()
+
+            # Update the data
             grid.point_data["Temperature"] = data[i].flatten("F")
-            plotter.update_scalars(data[i].flatten("F"), mesh=grid, render=True)
-            plotter.update()
-            time.sleep(1 / fps)
+            plotter.render()
+
+            # Update time text
+            if text_actor is not None:
+                plotter.remove_actor(text_actor)  # type:ignore
+            text_actor = plotter.add_text(
+                f"t = {i / fps:.2f}", position="upper_left", font_size=26, color="black"
+            )
+
+            # Ending the timer, waiting accordingly
+            end_time = time.time()
+            remaining_time = 1 / fps - (end_time - start_time)
+            if remaining_time > 0:
+                time.sleep(remaining_time)
+
+    def make_movie(
+        self,
+        filename: str,
+        fps: float,
+        total_time: float,
+        data: np.ndarray,
+        cmap: str = "viridis",
+    ) -> None:
+        """
+        Creates a movie with the given mesh and temperature data.
+
+        Args:
+            filename: The name of the file to be created.
+            fps: Frames per second for the movie.
+            total_time: Total time for the movie.
+            data: The temperature data for each node, contained in a 2D array.
+            cmap: Colormap for the data.
+        """
+        # Define the grid and plotter objects
+        grid = self.define_plotter()
+        plotter = pv.Plotter(off_screen=True)
+
+        # Defining the number of time steps
+        frames = int(total_time * fps)
+
+        # Assign initial temperature data
+        grid.point_data["Temperature"] = data[0].flatten("F")
+        plotter.add_mesh(grid, scalars="Temperature", cmap=cmap)
+        plotter.camera_position = "xy"
+
+        # Creating file
+        plotter.open_movie(filename)
+        plotter.show(auto_close=False)
+        plotter.write_frame()
+        text = None
+
+        # Animate and record frames
+        for i in range(1, frames):
+            # Update the data
+            grid.point_data["Temperature"] = data[i].flatten("F")
+            plotter.render()
+
+            # Update time text
+            if text is not None:
+                plotter.remove_actor(text)  # type:ignore
+            text = plotter.add_text(
+                f"t = {i / fps:.2f}", position="upper_left", font_size=20
+            )
+            plotter.write_frame()
 
         plotter.close()
 
-    def make_gif(self):
-        pass
+    def make_gif(
+        self, filename: str, fps: float, total_time: float, data: np.ndarray, cmap: str = "viridis"
+    ) -> None:
+        """
+        Creates a GIF with the given mesh and temperature data.
 
-    def save(self, file_name):
-        pass
+        Args:
+            filename: The name of the file to be created.
+            fps: Frames per second for the movie.
+            total_time: Total time for the movie.
+            data: The temperature data for each node, contained in a 2D array.
+            cmap: Colormap for the data.
+        """
+        # Define the grid and plotter objects
+        grid = self.define_plotter()
+        plotter = pv.Plotter(off_screen=True)
+
+        # Defining the number of time steps
+        frames = int(total_time * fps)
+
+        # Assign initial temperature data
+        grid.point_data["Temperature"] = data[0].flatten("F")
+        plotter.add_mesh(grid, scalars="Temperature", cmap=cmap)
+        plotter.camera_position = "xy"
+
+        # Creating file
+        plotter.open_gif(filename)
+        plotter.show(auto_close=False)
+        plotter.write_frame()
+        text = None
+
+        for i in range(1, frames):
+            # Update the data
+            grid.point_data["Temperature"] = data[i].flatten("F")
+            plotter.render()
+
+            # Update time text
+            if text is not None:
+                plotter.remove_actor(text)  # type:ignore
+            text = plotter.add_text(
+                f"t = {i / fps:.2f}", position="upper_left", font_size=20
+            )
+            plotter.write_frame()
+
+        plotter.close()
