@@ -9,7 +9,7 @@
                 "tomoki1207.pdf"
             ],
             "settings": {
-                "latex-workshop.latex.outDir": "%DIR%/../output",
+                "latex-workshop.latex.outDir": "%DIR%/output",
                 "latex-workshop.latex.recipes": [
                     {
                         "name": "latexmk (lualatex)",
