@@ -33,9 +33,9 @@ time_steps = 240
 temperatures = np.zeros((time_steps, nv, nh))
 
 # Dummy data
-left_right_temp = 15 
+left_right_temp = 15
 top_temp = 10
-bottom_temp = 25 
+bottom_temp = 25
 for t in range(time_steps):
     for i in range(nv):
         for j in range(nh):
@@ -48,9 +48,9 @@ for t in range(time_steps):
             elif i == nv - 1:
                 temperatures[t, i, j] = top_temp
             else:
-                temperatures[t, i, j] = 20 + 20 * np.sin(2 * np.pi * x / hl) * \
-                                        np.cos(2 * np.pi * y / vl) * \
-                                        np.sin(np.pi * t / time_steps)
+                temperatures[t, i, j] = 20 + 20 * np.sin(2 * np.pi * x / hl) * np.cos(
+                    2 * np.pi * y / vl
+                ) * np.sin(np.pi * t / time_steps)
 
 
 visualizer.animate_mesh(30, time_steps, temperatures)
