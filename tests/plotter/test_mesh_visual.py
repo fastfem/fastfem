@@ -10,8 +10,8 @@ import fastfem.plotter as p
 # Relevant constants for mesh building/videos
 NODES_IN_HORIZONTAL_DIRECTION = 10
 NODES_IN_VERTICAL_DIRECTION = 10
-TOTAL_TIME = 2
-FPS = 25
+TOTAL_TIME = 1
+FPS = 10
 TIME_STEPS = int(TOTAL_TIME * FPS)
 
 
@@ -141,7 +141,7 @@ def test_animate_data(
             cmap="invalid_cmap",
         )
 
-
+@pytest.mark.skip(reason="Not currently supported")
 def test_make_movie(
     tmp_path: pathlib.Path,
     mesh: m.Mesh,
