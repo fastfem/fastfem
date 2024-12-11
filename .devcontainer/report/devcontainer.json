@@ -17,6 +17,22 @@
                             "lualatexmk"
                         ]
                     }
+                ],
+                "latex-workshop.latex.tools": [
+                    {
+                        "name": "lualatexmk",
+                        "command": "latexmk",
+                        "args": [
+                            "-synctex=1",
+                            "-shell-escape",
+                            "-interaction=nonstopmode",
+                            "-file-line-error",
+                            "-lualatex",
+                            "-outdir=%OUTDIR%",
+                            "%DOC%"
+                        ],
+                        "env": {}
+                    }
                 ]
             }
         }
