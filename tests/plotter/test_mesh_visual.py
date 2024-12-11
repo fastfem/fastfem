@@ -2,6 +2,7 @@ import numpy as np
 import pyvista as pv
 from unittest.mock import MagicMock
 import pytest
+import pathlib
 
 import fastfem.mesh as m
 import fastfem.plotter as p
@@ -151,46 +152,48 @@ def test_animate_data(
         )
 
 
-# def test_make_movie(
-#     monkeypatch: pytest.MonkeyPatch, mesh: m.Mesh, dummy_data: np.ndarray
-# ) -> None:
-#     """
-#     Tests if the movie is created.
+def test_make_movie(
+    monkeypatch: pytest.MonkeyPatch, mesh: m.Mesh, dummy_data: np.ndarray
+) -> None:
+    """
+    Tests if the movie is created.
 
-#     Args:
-#         monkeypatch: Pytest fixture.
-#         mesh: The mesh object.
-#         dummy_data: The temperature data for each node, contained in a 3D array.
-#     """
-#     visualizer = p.VisualMesh(mesh)
-#     monkeypatch.setattr(
-#         pv.Plotter, "write_frame", MagicMock()
-#     )  # Added since pv.Plotter.open_movie() does not store frames in memory.
-#     monkeypatch.setattr(pv.Plotter, "close", MagicMock())
-#     visualizer.make_movie(
-#         filename="test.mp4",
-#         fps=fps,
-#         total_time=total_time,
-#         data=dummy_data,
-#     )
+    Args:
+        monkeypatch: Pytest fixture.
+        mesh: The mesh object.
+        dummy_data: The temperature data for each node, contained in a 3D array.
+    """
+    visualizer = p.VisualMesh(mesh)
+    filename = pathlib.Path("test.mp4")
+    monkeypatch.setattr(
+        pv.Plotter, "write_frame", MagicMock()
+    )  # Added since pv.Plotter.open_movie() does not store frames in memory.
+    monkeypatch.setattr(pv.Plotter, "close", MagicMock())
+    visualizer.make_movie(
+        filename = str(filename),
+        fps=fps,
+        total_time=total_time,
+        data=dummy_data,
+    )
 
 
-# def test_make_gif(
-#     monkeypatch: pytest.MonkeyPatch, mesh: m.Mesh, dummy_data: np.ndarray
-# ) -> None:
-#     """
-#     Tests if the gif is created.
+def test_make_gif(
+    monkeypatch: pytest.MonkeyPatch, mesh: m.Mesh, dummy_data: np.ndarray
+) -> None:
+    """
+    Tests if the gif is created.
 
-#     Args:
-#         monkeypatch: Pytest fixture.
-#         mesh: The mesh object.
-#         dummy_data: The temperature data for each node, contained in a 3D array
-#     """
-#     visualizer = p.VisualMesh(mesh)
-#     monkeypatch.setattr(pv.Plotter, "close", MagicMock())
-#     visualizer.make_gif(
-#         filename="test.gif",
-#         fps=fps,
-#         total_time=total_time,
-#         data=dummy_data,
-#     )
+    Args:
+        monkeypatch: Pytest fixture.
+        mesh: The mesh object.
+        dummy_data: The temperature data for each node, contained in a 3D array
+    """
+    visualizer = p.VisualMesh(mesh)
+    filename = pathlib.Path("test.gif") 
+    monkeypatch.setattr(pv.Plotter, "close", MagicMock())
+    visualizer.make_gif(
+        filename=str(filename),
+        fps=fps,
+        total_time=total_time,
+        data=dummy_data,
+    )
