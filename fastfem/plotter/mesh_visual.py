@@ -3,8 +3,6 @@ import time
 import pyvista as pv
 from pyvista import CellType
 
-# CornerAnnotation(position="upper_left", text=20)
-
 import fastfem.mesh as m
 
 

@@ -6,10 +6,10 @@ import pytest
 import fastfem.mesh as m
 import fastfem.plotter as p
 
+# Relevant constants for mesh building/videos
 nh = 10
 nv = 10
-# Time
-total_time = 10
+total_time = 2
 fps = 25
 time_steps = int(total_time * fps)
 
@@ -122,7 +122,75 @@ def test_plot_data(
     )
 
 
-# def test_make_movie():
+def test_animate_data(
+    monkeypatch: pytest.MonkeyPatch,
+    mesh: m.Mesh,
+    dummy_data: np.ndarray,
+) -> None:
+    """
+    Tests if the mesh is animated properly/
+
+    Args:
+        monkeypatch: Pytest fixture.
+        mesh: The mesh object.
+        dummy_data: The temperature data for each node, contained in a 3D array.
+    """
+    visualizer = p.VisualMesh(mesh)
+    monkeypatch.setattr(pv.Plotter, "show", MagicMock())
+    visualizer.animate_data(
+        fps,
+        total_time,
+        dummy_data,
+    )
+    with pytest.raises(ValueError):
+        visualizer.animate_data(
+            fps=np.random.uniform(25.1, 100),
+            total_time=total_time,
+            data=dummy_data,
+            cmap="invalid_cmap",
+        )
 
 
-# def test_make_gif():
+def test_make_movie(
+    monkeypatch: pytest.MonkeyPatch, mesh: m.Mesh, dummy_data: np.ndarray
+) -> None:
+    """
+    Tests if the movie is created.
+
+    Args:
+        monkeypatch: Pytest fixture.
+        mesh: The mesh object.
+        dummy_data: The temperature data for each node, contained in a 3D array.
+    """
+    visualizer = p.VisualMesh(mesh)
+    monkeypatch.setattr(
+        pv.Plotter, "write_frame", MagicMock()
+    )  # Added since pv.Plotter.open_movie() does not store frames in memory.
+    monkeypatch.setattr(pv.Plotter, "close", MagicMock())
+    visualizer.make_movie(
+        filename="test.mp4",
+        fps=fps,
+        total_time=total_time,
+        data=dummy_data,
+    )
+
+
+def test_make_gif(
+    monkeypatch: pytest.MonkeyPatch, mesh: m.Mesh, dummy_data: np.ndarray
+) -> None:
+    """
+    Tests if the gif is created.
+
+    Args:
+        monkeypatch: Pytest fixture.
+        mesh: The mesh object.
+        dummy_data: The temperature data for each node, contained in a 3D array
+    """
+    visualizer = p.VisualMesh(mesh)
+    monkeypatch.setattr(pv.Plotter, "close", MagicMock())
+    visualizer.make_gif(
+        filename="test.gif",
+        fps=fps,
+        total_time=total_time,
+        data=dummy_data,
+    )
