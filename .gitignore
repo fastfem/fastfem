@@ -166,3 +166,4 @@ cython_debug/
 
 # Report's output:
 report/output/
+report/_minted-main/
