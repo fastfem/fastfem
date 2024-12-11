@@ -2,7 +2,6 @@ import numpy as np
 import pyvista as pv
 from unittest.mock import MagicMock
 import pytest
-from pytest import approx
 
 import fastfem.mesh as m
 import fastfem.plotter as p
@@ -13,6 +12,7 @@ nv = 10
 total_time = 10
 fps = 25
 time_steps = int(total_time * fps)
+
 
 @pytest.fixture(params=["triangle", "quadrangle"])
 def mesh(request: pytest.FixtureRequest) -> m.Mesh:
@@ -59,7 +59,7 @@ def dummy_data() -> np.ndarray:
 
 def test_define_plotter(mesh: m.Mesh) -> None:
     """
-    Tests if the VisualMesh class defines a mesh properly. 
+    Tests if the VisualMesh class defines a mesh properly.
 
     Args:
         mesh: The mesh object.
