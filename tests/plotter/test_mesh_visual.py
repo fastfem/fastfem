@@ -2,94 +2,73 @@ import numpy as np
 import pyvista as pv
 from unittest.mock import MagicMock
 import pytest
+from pytest import approx
 
 import fastfem.mesh as m
 import fastfem.plotter as p
 
-
-@pytest.fixture(params=["triangle", "quadrangle"])
-def mesh(request):
-    return m.create_a_rectangle_mesh(
-        horizontal_length=1,
-        vertical_length=1,
-        nodes_in_horizontal_direction=10,
-        nodes_in_vertical_direction=10,
-        element_type=request.param,
-    )
-
-
-colors = ["white", "black", "red", "green", "blue", "yellow", "cyan", "magenta"]
-point_label = [True, False]
-cmaps = ["viridis", "plasma", "inferno", "magma", "cividis", "twilight"]
-
-nh = np.random.randint(1, 30)
-nv = np.random.randint(1, 30)
-hl = np.random.randint(1, 3)
-vl = np.random.randint(1, 3)
-
-mesh_triangle = m.create_a_rectangle_mesh(
-    horizontal_length=hl,
-    vertical_length=vl,
-    nodes_in_horizontal_direction=nh,
-    nodes_in_vertical_direction=nv,
-    element_type="triangle",
-    file_name=None,
-)
-
-mesh_quadrangle = m.create_a_rectangle_mesh(
-    horizontal_length=hl,
-    vertical_length=vl,
-    nodes_in_horizontal_direction=nh,
-    nodes_in_vertical_direction=nv,
-    element_type="quadrangle",
-    file_name=None,
-)
-
+nh = 10
+nv = 10
 # Time
 total_time = 10
 fps = 25
 time_steps = int(total_time * fps)
-temperatures = np.zeros((time_steps, nv, nh))
 
-# Define boundary temperatures
-left_temp = 0
-right_temp = 0
-top_temp = 0
-bottom_temp = 0
-min_temp = np.random.randint(10, 20)
-max_temp = np.random.randint(20, 30)
+@pytest.fixture(params=["triangle", "quadrangle"])
+def mesh(request: pytest.FixtureRequest) -> m.Mesh:
+    """
+    Fixture to create a mesh with different element types.
 
-# Generate random temperature data
-temperatures = np.random.uniform(low=min_temp, high=max_temp, size=(time_steps, nv, nh))
+    Args:
+        request: Pytest fixture.
 
-for i in range(time_steps):
-    temperatures[i, 0, :] = bottom_temp
-    temperatures[i, -1, :] = top_temp
-    temperatures[i, :, 0] = left_temp
-    temperatures[i, :, -1] = right_temp
-
-
-visualizer_triangle = p.VisualMesh(mesh_quadrangle)
-visualizer_quadrangle = p.VisualMesh(mesh_quadrangle)
+    Returns:
+        m.Mesh: The mesh object.
+    """
+    return m.create_a_rectangle_mesh(
+        horizontal_length=1,
+        vertical_length=1,
+        nodes_in_horizontal_direction=nh,
+        nodes_in_vertical_direction=nv,
+        element_type=request.param,
+    )
 
 
-def test_triangle_define_plotter():
-    grid = visualizer_triangle.define_plotter()
+@pytest.fixture(params=[1, 2, 3])
+def dummy_data() -> np.ndarray:
+    """
+    Fixture to create dummy data for testing.
+
+    Returns:
+        np.ndarray: Data.
+    """
+    left_temp = np.random.randint(0, 10)
+    right_temp = np.random.randint(0, 10)
+    top_temp = np.random.randint(0, 10)
+    bottom_temp = np.random.randint(0, 10)
+    min_temp = np.random.randint(10, 20)
+    max_temp = np.random.randint(20, 30)
+    data = np.random.uniform(low=min_temp, high=max_temp, size=(time_steps, nv, nh))
+    for i in range(time_steps):
+        data[i, 0, :] = bottom_temp
+        data[i, -1, :] = top_temp
+        data[i, :, 0] = left_temp
+        data[i, :, -1] = right_temp
+    return data
+
+
+def test_define_plotter(mesh: m.Mesh) -> None:
+    """
+    Tests if the VisualMesh class defines a mesh properly. 
+
+    Args:
+        mesh: The mesh object.
+    """
+    visualizer = p.VisualMesh(mesh)
+    grid = visualizer.define_plotter()
     assert isinstance(grid, pv.UnstructuredGrid)
     assert grid.n_cells > 0
-    assert grid.n_points > 0
-
-
-# @pytest.mark.xfail(reason="This might fail with quadrangle elements")
-def test_quadrangle_define_plotter():
-    grid = visualizer_quadrangle.define_plotter()
-    assert isinstance(grid, pv.UnstructuredGrid)
-    assert grid.n_cells > 0
-    assert grid.n_points > 0
-
-
-point_label = [True, False]
-cmaps = ["viridis", "plasma", "inferno", "magma", "cividis", "twilight"]
+    assert grid.n_points == mesh.number_of_nodes
 
 
 @pytest.mark.parametrize("point_label", [True, False])
@@ -97,9 +76,26 @@ cmaps = ["viridis", "plasma", "inferno", "magma", "cividis", "twilight"]
     "color", ["white", "black", "red", "green", "blue", "yellow", "cyan", "magenta"]
 )
 @pytest.mark.parametrize("edge_thickness", [1, 2, 3, 4, 5, 6, 7, 8, 9, 10])
-def test_triangle_plot_mesh(monkeypatch, point_label, color, edge_thickness):
+def test_plot_mesh(
+    monkeypatch: pytest.MonkeyPatch,
+    mesh: m.Mesh,
+    point_label: bool,
+    color: str,
+    edge_thickness: int,
+) -> None:
+    """
+    Tests if the mesh is plotted properly, without data.
+
+    Args:
+        monkeypatch: Pytest fixture.
+        mesh: The mesh object.
+        point_label: Boolean value to determine whether the points are labeled.
+        color: The color of the mesh/edges.
+        edge_thickness: Thickness of the edges.
+    """
+    visualizer = p.VisualMesh(mesh)
     monkeypatch.setattr(pv.Plotter, "show", MagicMock())
-    visualizer_triangle.plot_mesh(
+    visualizer.plot_mesh(
         point_label=point_label,
         mesh_color=color,
         edge_color=color,
@@ -107,31 +103,23 @@ def test_triangle_plot_mesh(monkeypatch, point_label, color, edge_thickness):
     )
 
 
-def test_quadrangle_plot_mesh(monkeypatch, mesh):
-    visual = p.VisualMesh(mesh)
+# @pytest.mark.parametrize("cmap", ["viridis", "plasma", "inferno", "magma", "cividis"])
+def test_plot_data(
+    monkeypatch: pytest.MonkeyPatch, mesh: m.Mesh, dummy_data: np.ndarray
+) -> None:
+    """
+    Tests if the mesh is plotted properly, for a single frame.
+
+    Args:
+        monkeypatch: Pytest fixture.
+        mesh: The mesh object.
+        dummy_data: The temperature data for each node, contained in a 2D array.
+    """
+    visualizer = p.VisualMesh(mesh)
     monkeypatch.setattr(pv.Plotter, "show", MagicMock())
-    visual.plot_mesh(
-        point_label=point_label[np.random.randint(0, 2)],
-        mesh_color=colors[np.random.randint(0, len(colors))],
-        edge_color=colors[np.random.randint(0, len(colors))],
-        edge_thickness=np.random.randint(1, 10),
+    visualizer.plot_data(
+        data=dummy_data[0],
     )
-
-
-def test_triangle_plot_data(monkeypatch):
-    visualizer_triangle.plot_data(
-        data=temperatures[np.random.randint(0, len(temperatures))],
-        cmap=cmaps[np.random.randint(0, len(cmaps))],
-    )
-
-
-# def test_quadrangle_plot_data(monkeypatch):
-#     mesh_generator()
-#     monkeypatch.setattr(pv.Plotter, "show", MagicMock())
-#     visualizer_quadrangle.plot_data(
-#         data=temperatures[np.random.randint(0, len(temperatures))],
-#         cmap=cmaps[np.random.randint(0, len(cmaps))],
-#     )
 
 
 # def test_make_movie():
