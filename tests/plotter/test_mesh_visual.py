@@ -3,6 +3,7 @@ import pyvista as pv
 from unittest.mock import MagicMock
 import pytest
 import pathlib
+import sys
 
 import fastfem.mesh as m
 import fastfem.plotter as p
@@ -171,6 +172,10 @@ def test_make_movie(
     assert filename.exists()
 
 
+@pytest.mark.skipif(
+    sys.platform in ["win32", "linux"],
+    reason="Currently not supported on Windows/Linux",
+)
 def test_make_gif(
     tmp_path: pathlib.Path,
     mesh: m.Mesh,
