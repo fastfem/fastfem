@@ -145,6 +145,7 @@ def test_animate_data(
             cmap="invalid_cmap",
         )
 
+
 @pytest.mark.skip(reason="Not currently supported")
 def test_make_movie(
     tmp_path: pathlib.Path,
