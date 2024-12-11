@@ -272,14 +272,14 @@ class VisualMesh:
 
         # Creating file
         plotter.open_gif(filename)
-        plotter.show(auto_close=False)
+        #plotter.show(auto_close=False)
         plotter.write_frame()
         text = None
 
         for i in range(1, frames):
             # Update the data
             grid.point_data["Temperature"] = data[i].flatten("F")
-            plotter.update()
+            plotter.render()
 
             # Update time text
             if text is not None:
