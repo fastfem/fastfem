@@ -8,11 +8,11 @@ import fastfem.mesh as m
 import fastfem.plotter as p
 
 # Relevant constants for mesh building/videos
-nh = 10
-nv = 10
-total_time = 2
-fps = 25
-time_steps = int(total_time * fps)
+NODES_IN_HORIZONTAL_DIRECTION = 10
+NODES_IN_VERTICAL_DIRECTION = 10
+TOTAL_TIME = 2
+FPS = 25
+TIME_STEPS = int(TOTAL_TIME * FPS)
 
 
 @pytest.fixture(params=["triangle", "quadrangle"])
@@ -29,8 +29,8 @@ def mesh(request: pytest.FixtureRequest) -> m.Mesh:
     return m.create_a_rectangle_mesh(
         horizontal_length=1,
         vertical_length=1,
-        nodes_in_horizontal_direction=nh,
-        nodes_in_vertical_direction=nv,
+        nodes_in_horizontal_direction=NODES_IN_HORIZONTAL_DIRECTION,
+        nodes_in_vertical_direction=NODES_IN_VERTICAL_DIRECTION,
         element_type=request.param,
     )
 
@@ -49,8 +49,8 @@ def dummy_data() -> np.ndarray:
     bottom_temp = np.random.randint(0, 10)
     min_temp = np.random.randint(10, 20)
     max_temp = np.random.randint(20, 30)
-    data = np.random.uniform(low=min_temp, high=max_temp, size=(time_steps, nv, nh))
-    for i in range(time_steps):
+    data = np.random.uniform(low=min_temp, high=max_temp, size=(TIME_STEPS, NODES_IN_VERTICAL_DIRECTION, NODES_IN_HORIZONTAL_DIRECTION))
+    for i in range(TIME_STEPS):
         data[i, 0, :] = bottom_temp
         data[i, -1, :] = top_temp
         data[i, :, 0] = left_temp
@@ -129,21 +129,20 @@ def test_animate_data(
     visualizer = p.VisualMesh(mesh)
     monkeypatch.setattr(pv.Plotter, "show", MagicMock())
     visualizer.animate_data(
-        fps,
-        total_time,
+        FPS,
+        TOTAL_TIME,
         dummy_data,
     )
     with pytest.raises(ValueError):
         visualizer.animate_data(
             fps=np.random.uniform(25.1, 100),
-            total_time=total_time,
+            total_time=TOTAL_TIME,
             data=dummy_data,
             cmap="invalid_cmap",
         )
 
 
 def test_make_movie(
-    monkeypatch: pytest.MonkeyPatch,
     tmp_path: pathlib.Path,
     mesh: m.Mesh,
     dummy_data: np.ndarray,
@@ -158,18 +157,16 @@ def test_make_movie(
     """
     visualizer = p.VisualMesh(mesh)
     filename = tmp_path / "test.mp4"
-    monkeypatch.setattr(pv.Plotter, "write_frame", MagicMock())
-    monkeypatch.setattr(pv.Plotter, "close", MagicMock())
     visualizer.make_movie(
         filename=str(filename),
-        fps=fps,
-        total_time=total_time,
+        fps=FPS,
+        total_time=TOTAL_TIME,
         data=dummy_data,
     )
+    assert filename.exists()
 
 
 def test_make_gif(
-    monkeypatch: pytest.MonkeyPatch,
     tmp_path: pathlib.Path,
     mesh: m.Mesh,
     dummy_data: np.ndarray,
@@ -184,11 +181,10 @@ def test_make_gif(
     """
     visualizer = p.VisualMesh(mesh)
     filename = tmp_path / "test.gif"
-    monkeypatch.setattr(pv.Plotter, "write_frame", MagicMock())
-    monkeypatch.setattr(pv.Plotter, "close", MagicMock())
     visualizer.make_gif(
         filename=str(filename),
-        fps=fps,
-        total_time=total_time,
+        fps=FPS,
+        total_time=TOTAL_TIME,
         data=dummy_data,
     )
+    assert filename.exists()
