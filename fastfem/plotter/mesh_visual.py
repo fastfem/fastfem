@@ -1,8 +1,11 @@
 import numpy as np
-import pyvista as pv
-from pyvista import CellType
-import fastfem.mesh as m
 import time
+import pyvista as pv
+from pyvista import CellType, CornerAnnotation
+
+#CornerAnnotation(position="upper_left", text=20)
+
+import fastfem.mesh as m
 
 
 class VisualMesh:
@@ -14,7 +17,6 @@ class VisualMesh:
         Args:
             mesh: The mesh object.
         """
-
         self.mesh = mesh
 
     def define_plotter(self) -> pv.UnstructuredGrid:
@@ -24,7 +26,6 @@ class VisualMesh:
         Returns:
             grid: PyVista grid object.
         """
-
         # Recovering element type
         if self.mesh["surface"].mesh[0].type == "triangle":
             cell_type = CellType.TRIANGLE
@@ -65,9 +66,8 @@ class VisualMesh:
             mesh_color: Color of the mesh.
             edge_color: Color of the edges.
             edge_thickness: Thickness of the edges.
-            point_label: Boolean value to determine whether the points are labeled or not.
+            point_label: Boolean value to determine whether the points are labeled.
         """
-
         # Define the grid and plotter objects
         grid = self.define_plotter()
         plotter = pv.Plotter()
@@ -95,10 +95,9 @@ class VisualMesh:
         Plots the mesh with temperature data, for a single time step.
 
         Args:
-            data: The temperature data for each node, contained in a 1D array.
+            data: The temperature data for each node, contained in a 2D array.
             cmap: Colormap for the data.
         """
-
         # Define the grid and plotter objects
         grid = self.define_plotter()
         plotter = pv.Plotter()
@@ -117,8 +116,9 @@ class VisualMesh:
             },
         )
         plotter.camera_position = "xy"
+        plotter.show()
 
-    def animate_mesh(
+    def animate_data(
         self, fps: float, total_time: float, data: np.ndarray, cmap: str = "viridis"
     ) -> None:
         """
@@ -127,12 +127,13 @@ class VisualMesh:
         Args:
             fps: Frames per second for the animation.
             total_time: Total time for the animation.
-            data: The temperature data for each node, contained in a 2D array.
+            data: The temperature data for each node, contained in a 3D array.
             cmap: Colormap for the data.
         """
-
         if fps > 25:
-            raise ValueError("The maximum value for fps is 25.")
+            raise ValueError(
+                "The maximum value for fps is 25. Please decrease your fps value."
+            )
 
         # Define the grid and plotter objects
         grid = self.define_plotter()
@@ -220,6 +221,7 @@ class VisualMesh:
 
         # Creating file
         plotter.open_movie(filename)
+        #plotter.show()
         plotter.show(auto_close=False)
         plotter.write_frame()
         text = None
@@ -241,7 +243,12 @@ class VisualMesh:
         plotter.close()
 
     def make_gif(
-        self, filename: str, fps: float, total_time: float, data: np.ndarray, cmap: str = "viridis"
+        self,
+        filename: str,
+        fps: float,
+        total_time: float,
+        data: np.ndarray,
+        cmap: str = "viridis",
     ) -> None:
         """
         Creates a GIF with the given mesh and temperature data.
@@ -284,4 +291,4 @@ class VisualMesh:
             )
             plotter.write_frame()
 
-        plotter.close()
+        plotter.close() 
