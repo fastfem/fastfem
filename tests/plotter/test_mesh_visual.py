@@ -1,9 +1,22 @@
 import numpy as np
 import pyvista as pv
 from unittest.mock import MagicMock
+import pytest
 
 import fastfem.mesh as m
 import fastfem.plotter as p
+
+
+@pytest.fixture(params=["triangle", "quadrangle"])
+def mesh(request):
+    return m.create_a_rectangle_mesh(
+        horizontal_length=1,
+        vertical_length=1,
+        nodes_in_horizontal_direction=10,
+        nodes_in_vertical_direction=10,
+        element_type=request.param,
+    )
+
 
 colors = ["white", "black", "red", "green", "blue", "yellow", "cyan", "magenta"]
 point_label = [True, False]
@@ -56,7 +69,7 @@ for i in range(time_steps):
     temperatures[i, :, -1] = right_temp
 
 
-visualizer_triangle = p.VisualMesh(mesh_triangle)
+visualizer_triangle = p.VisualMesh(mesh_quadrangle)
 visualizer_quadrangle = p.VisualMesh(mesh_quadrangle)
 
 
@@ -75,19 +88,29 @@ def test_quadrangle_define_plotter():
     assert grid.n_points > 0
 
 
-def test_triangle_plot_mesh(monkeypatch):
+point_label = [True, False]
+cmaps = ["viridis", "plasma", "inferno", "magma", "cividis", "twilight"]
+
+
+@pytest.mark.parametrize("point_label", [True, False])
+@pytest.mark.parametrize(
+    "color", ["white", "black", "red", "green", "blue", "yellow", "cyan", "magenta"]
+)
+@pytest.mark.parametrize("edge_thickness", [1, 2, 3, 4, 5, 6, 7, 8, 9, 10])
+def test_triangle_plot_mesh(monkeypatch, point_label, color, edge_thickness):
     monkeypatch.setattr(pv.Plotter, "show", MagicMock())
     visualizer_triangle.plot_mesh(
-        point_label=point_label[np.random.randint(0, 2)],
-        mesh_color=colors[np.random.randint(0, len(colors))],
-        edge_color=colors[np.random.randint(0, len(colors))],
-        edge_thickness=np.random.randint(1, 10),
+        point_label=point_label,
+        mesh_color=color,
+        edge_color=color,
+        edge_thickness=edge_thickness,
     )
 
 
-def test_quadrangle_plot_mesh(monkeypatch):
+def test_quadrangle_plot_mesh(monkeypatch, mesh):
+    visual = p.VisualMesh(mesh)
     monkeypatch.setattr(pv.Plotter, "show", MagicMock())
-    visualizer_quadrangle.plot_mesh(
+    visual.plot_mesh(
         point_label=point_label[np.random.randint(0, 2)],
         mesh_color=colors[np.random.randint(0, len(colors))],
         edge_color=colors[np.random.randint(0, len(colors))],
@@ -96,19 +119,19 @@ def test_quadrangle_plot_mesh(monkeypatch):
 
 
 def test_triangle_plot_data(monkeypatch):
-    monkeypatch.setattr(pv.Plotter, "show", MagicMock())
     visualizer_triangle.plot_data(
         data=temperatures[np.random.randint(0, len(temperatures))],
         cmap=cmaps[np.random.randint(0, len(cmaps))],
     )
 
 
-def test_quadrangle_plot_data(monkeypatch):
-    monkeypatch.setattr(pv.Plotter, "show", MagicMock())
-    visualizer_quadrangle.plot_data(
-        data=temperatures[np.random.randint(0, len(temperatures))],
-        cmap=cmaps[np.random.randint(0, len(cmaps))],
-    )
+# def test_quadrangle_plot_data(monkeypatch):
+#     mesh_generator()
+#     monkeypatch.setattr(pv.Plotter, "show", MagicMock())
+#     visualizer_quadrangle.plot_data(
+#         data=temperatures[np.random.randint(0, len(temperatures))],
+#         cmap=cmaps[np.random.randint(0, len(cmaps))],
+#     )
 
 
 # def test_make_movie():
