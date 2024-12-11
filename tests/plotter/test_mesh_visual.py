@@ -49,7 +49,11 @@ def dummy_data() -> np.ndarray:
     bottom_temp = np.random.randint(0, 10)
     min_temp = np.random.randint(10, 20)
     max_temp = np.random.randint(20, 30)
-    data = np.random.uniform(low=min_temp, high=max_temp, size=(TIME_STEPS, NODES_IN_VERTICAL_DIRECTION, NODES_IN_HORIZONTAL_DIRECTION))
+    data = np.random.uniform(
+        low=min_temp,
+        high=max_temp,
+        size=(TIME_STEPS, NODES_IN_VERTICAL_DIRECTION, NODES_IN_HORIZONTAL_DIRECTION),
+    )
     for i in range(TIME_STEPS):
         data[i, 0, :] = bottom_temp
         data[i, -1, :] = top_temp
