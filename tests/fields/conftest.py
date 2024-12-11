@@ -1,6 +1,8 @@
 import numpy as np
 import pytest
 
+from fastfem.fields.field import Field, ShapeComponent
+
 _SHAPES_COMPARE_: list[tuple[tuple[int, ...], tuple[int, ...]]] = [
     (tuple(), tuple()),
     (tuple(), (0,)),
@@ -72,3 +74,47 @@ def comparison_three_shapes():
             yield (c, b, a, valid)
 
     return _itergen(loop_shapes)
+
+
+def field_from_perm(shapes, coef, perm):
+    return Field(
+        shapes[perm[ShapeComponent.BASIS]],
+        shapes[perm[ShapeComponent.POINT]],
+        coef,
+        perm,
+    )
+
+
+@pytest.fixture(
+    params=[
+        (0, 1, 2),
+        (0, 2, 1),
+        (1, 0, 2),
+        (1, 2, 0),
+        (2, 0, 1),
+        (2, 1, 0),
+    ]
+)
+def permutation(request):
+    return request.param
+
+
+@pytest.fixture
+def field_of_different_shape_orders_testsep(permutation):
+    def f(shapes, coef):
+        yield field_from_perm(shapes, coef, permutation)
+
+    return f
+
+
+@pytest.fixture
+def field_of_different_shape_orders():
+    def f(shapes, coef):
+        yield field_from_perm(shapes, coef, (0, 1, 2))
+        yield field_from_perm(shapes, coef, (0, 2, 1))
+        yield field_from_perm(shapes, coef, (1, 0, 2))
+        yield field_from_perm(shapes, coef, (1, 2, 0))
+        yield field_from_perm(shapes, coef, (2, 0, 1))
+        yield field_from_perm(shapes, coef, (2, 1, 0))
+
+    return f

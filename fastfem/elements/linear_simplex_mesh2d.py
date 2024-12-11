@@ -1,13 +1,14 @@
+import collections.abc as colltypes
+import typing
+
+import numpy as np
+from numpy.typing import NDArray
+
+import fastfem.fields.numpy_similes as fnp
 from fastfem.elements.element2d import StaticElement2D
 from fastfem.elements.linear_simplex2d import LinearSimplex2D
 from fastfem.fields.field import Field, FieldAxisIndex, ShapeComponent
-import fastfem.fields.numpy_similes as fnp
 from fastfem.mesh import Mesh, create_a_rectangle_mesh
-import numpy as np
-import typing
-
-import collections.abc as colltypes
-from numpy.typing import NDArray
 
 atom = LinearSimplex2D()
 
@@ -66,7 +67,7 @@ class LinearSimplexMesh2D(StaticElement2D):
         """
         self._verify_field_compatibilities(field)
         field = field.broadcast_to_shape(
-            field.stack_shape, self.basis_shape(), field.field_shape
+            field.stack_shape, self.basis_shape(), field.point_shape
         )
         return fnp.moveaxis(
             field.basis[self.element_node_indices],

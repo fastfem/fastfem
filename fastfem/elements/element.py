@@ -66,7 +66,7 @@ class IsoparametricElement(abc.ABC):
 
     # this emulates a member class definition
     def Field(
-        self, field: NDArray, is_const: bool, field_shape: tuple[int, ...] = tuple()
+        self, field: NDArray, is_const: bool, point_shape: tuple[int, ...] = tuple()
     ) -> FieldType:
         """Converts a `numpy` array to a `Field` object that can be used by this
         element class.
@@ -78,7 +78,7 @@ class IsoparametricElement(abc.ABC):
                 scalar fields, this means that `field.shape` is the field's stack shape.
                 Otherwise, the first `len(element.basis_shape())` axes of `field` are
                 taken to be the basis axes.
-            field_shape (tuple[int, ...], optional): The shape of the field (pointwise,
+            point_shape (tuple[int, ...], optional): The shape of the field (pointwise,
             per-element). Defaults to tuple() for a scalar field.
 
         Raises:
@@ -92,7 +92,7 @@ class IsoparametricElement(abc.ABC):
         basis_shape = self.basis_shape()
         return FieldType(
             basis_shape,
-            field_shape,
+            point_shape,
             (
                 field[*tuple(np.newaxis for _ in range(len(basis_shape))), ...]
                 if is_const

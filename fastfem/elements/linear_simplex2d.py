@@ -1,8 +1,8 @@
 import numpy as np
 
+import fastfem.fields.numpy_similes as fnp
 from fastfem.elements.element2d import Element2D
 from fastfem.fields.field import Field, ShapeComponent
-import fastfem.fields.numpy_similes as fnp
 
 
 class LinearSimplex2D(Element2D):
@@ -17,13 +17,12 @@ class LinearSimplex2D(Element2D):
         return Field((3,), (2,), np.array([[0, 0], [1, 0], [0, 1]]))
 
     def _interpolate_field(self, field, X, Y):
-        field_pad = (np.newaxis,) * len(field.field_shape)
-        X = X[..., *field_pad]
-        Y = Y[..., *field_pad]
+        X = Field(X.shape, tuple(), X)
+        Y = Field(Y.shape, tuple(), Y)
         return (
-            field.coefficients[0, ...] * (1 - X - Y)
-            + field.coefficients[1, ...] * X
-            + field.coefficients[2, ...] * Y
+            field.basis[0, ...] * (1.0 - X - Y)
+            + field.basis[1, ...] * X
+            + field.basis[2, ...] * Y
         )
 
     def _compute_field_gradient(self, field, pos_field=None):
@@ -34,46 +33,37 @@ class LinearSimplex2D(Element2D):
         ):  # we have a constant function.
             return Field(
                 tuple(),
-                field.field_shape + (2,),
-                np.zeros(field.stack_shape + field.field_shape + (1,)),
+                field.point_shape + (2,),
+                np.zeros(field.stack_shape + field.point_shape + (1,)),
             )
 
-        grad_coefs = np.stack(
+        grad_coefs = fnp.stack(
             [
-                field.basis[1, ...].coefficients - field.basis[0, ...].coefficients,
-                field.basis[2, ...].coefficients - field.basis[0, ...].coefficients,
+                field.basis[1, ...] - field.basis[0, ...],
+                field.basis[2, ...] - field.basis[0, ...],
             ],
-            axis=-1,
+            axis=(ShapeComponent.POINT, len(field.point_shape)),
         )
         if pos_field is not None:
             def_grad = self._compute_field_gradient(pos_field)
-            grad_coefs = np.einsum(
-                "...ij,...i->...j", np.linalg.inv(def_grad.coefficients), grad_coefs
+            grad_coefs = fnp.einsum(
+                ShapeComponent.POINT,
+                "...ij,...i->...j",
+                fnp.linalg.inv(def_grad, ShapeComponent.POINT),
+                grad_coefs,
             )
 
-        return Field(tuple(), field.field_shape + (2,), grad_coefs)
+        return grad_coefs
 
     def _integrate_field(self, pos_field, field, jacobian_scale=...):
         coefs = (np.ones((3, 3)) + np.eye(3)) / 24
-        fieldpad = (np.newaxis,) * len(field.field_shape)
-        return Field(
-            tuple(),
-            field.field_shape,
-            np.einsum(
-                "...,ij,i...,j...->...",
-                np.abs(
-                    np.linalg.det(self._compute_field_gradient(pos_field).coefficients)[
-                        ..., *fieldpad
-                    ]
-                ),
-                coefs,
-                fnp.moveaxis(
-                    field, (ShapeComponent.BASIS, 0), (ShapeComponent.STACK, 0)
-                ).coefficients,
-                fnp.moveaxis(
-                    field, (ShapeComponent.BASIS, 0), (ShapeComponent.STACK, 0)
-                ).coefficients[..., *fieldpad],
-            ),
+        return fnp.einsum(
+            ShapeComponent.BASIS,
+            ",ij,i,j->",
+            fnp.abs(fnp.linalg.det(self._compute_field_gradient(pos_field))),
+            coefs,
+            field,
+            jacobian_scale,
         )
 
     def _integrate_basis_times_field(
@@ -89,19 +79,15 @@ class LinearSimplex2D(Element2D):
             )
             / 120
         )
-        fieldpad = (np.newaxis,) * len(field.field_shape)
-        res = np.einsum(
-            "...,kij,i...,j...->k...",
-            np.abs(
-                np.linalg.det(self._compute_field_gradient(pos_field).coefficients)[
-                    ..., *fieldpad
-                ]
-            ),
+        res = fnp.einsum(
+            ShapeComponent.BASIS,
+            ",kij,i,j->k",
+            fnp.abs(fnp.linalg.det(self._compute_field_gradient(pos_field))),
             coefs,
-            field.coefficients,
-            jacobian_scale.coefficients[..., *fieldpad],
+            field,
+            jacobian_scale,
         )
-        return res if indices is None else res[*indices]
+        return res if indices is None else res.basis[*indices]
 
     def _integrate_grad_basis_dot_field(
         self, pos_field, field, indices=None, jacobian_scale=...
@@ -109,21 +95,30 @@ class LinearSimplex2D(Element2D):
         # this is rather unoptimized. TODO make better
         basis_diff_coefs = np.array([[-1, -1], [1, 0], [0, 1]])
         defgrad = self._compute_field_gradient(pos_field)
-        dginv = np.linalg.inv(defgrad.coefficients)
+        dginv = fnp.linalg.inv(defgrad)
 
         # pad to field-shape, excluding last axis, which is dotted (contracted)
-        # fieldpad = (np.newaxis,) * (len(field.field_shape) - 1)
-        basis_times_field = np.einsum(
-            "...,kl,...lg,j...g->jk...",
+        # fieldpad = (np.newaxis,) * (len(field.point_shape) - 1)
+        basis_times_field = fnp.einsum(
+            ShapeComponent.POINT,
+            ",kl,lg,...g->k...",
             # exclude jacobian, since we are delegating to integrate_field subroutine.
             # np.abs(np.linalg.det(defgrad.coefficients)[..., *fieldpad]),
             1,
             basis_diff_coefs,
             dginv,
-            field.coefficients,
+            field,
         )
-        return self.integrate_field(
-            pos_field,
-            Field((3,), field.field_shape[:-1], basis_times_field),
-            jacobian_scale,
+        integ = fnp.moveaxis(
+            self.integrate_field(
+                pos_field,
+                basis_times_field,
+                jacobian_scale,
+            ),
+            (ShapeComponent.POINT, 0),
+            (ShapeComponent.BASIS, 0),
         )
+        if indices is None:
+            return integ
+        else:
+            return integ.basis[*indices]

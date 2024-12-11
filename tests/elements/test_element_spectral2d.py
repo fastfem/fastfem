@@ -3,7 +3,7 @@ from typing import Callable
 import numpy as np
 import pytest
 
-from fastfem.elements import spectral_element
+from fastfem.elements import spectral_element2d as spectral_element
 from fastfem.fields.field import Field
 
 
@@ -217,7 +217,7 @@ def test_lagrange_evals1D(element, broadcastable_shapes):
 def test_interpolate_field(element, ref_coords):
     field = element.basis_fields()
     x, y = ref_coords
-    interp_vals = element.interpolate_field(field, x, y)
+    interp_vals = element.interpolate_field(field, x, y).coefficients
     # relies on correctness of lagrange_eval1D
     Lx = element.lagrange_eval1D(0, None, x=x)
     Ly = element.lagrange_eval1D(0, None, x=y)
@@ -295,7 +295,7 @@ def test_integrate_field(
     jac = np.abs(np.linalg.det(def_grad.coefficients))
     kronecker *= jac[:, :, np.newaxis, np.newaxis]
 
-    np.testing.assert_almost_equal(result, kronecker)
+    np.testing.assert_almost_equal(result.coefficients, kronecker)
 
 
 def test_integrate_basis_times_field(
@@ -304,7 +304,9 @@ def test_integrate_basis_times_field(
     element, pointfield, transform = transformed_element
     field = element.basis_fields()
     jac_scale = Field(
-        element.basis_shape(), tuple(), field.coefficients[..., np.newaxis, np.newaxis]
+        element.basis_shape(),
+        tuple(),
+        field.coefficients[:, :, np.newaxis, np.newaxis, :, :],
     )
 
     result = element.integrate_basis_times_field(
@@ -324,7 +326,7 @@ def test_integrate_basis_times_field(
     jac = np.abs(np.linalg.det(def_grad.coefficients))
     triple_kronecker *= jac[:, :, np.newaxis, np.newaxis, np.newaxis, np.newaxis]
 
-    np.testing.assert_almost_equal(result, triple_kronecker)
+    np.testing.assert_almost_equal(result.coefficients, triple_kronecker)
 
 
 def test_integrate_grad_basis_dot_field(
@@ -333,13 +335,15 @@ def test_integrate_grad_basis_dot_field(
     element, pointfield, transform = transformed_element
     field = element.basis_fields()
     jac_scale = Field(
-        element.basis_shape(), tuple(), field.coefficients[..., np.newaxis, np.newaxis]
+        element.basis_shape(),
+        tuple(),
+        field.coefficients[:, :, np.newaxis, np.newaxis, :, :],
     )
     e_field = Field(
         element.basis_shape(),
         (2,),
-        np.eye(2)[np.newaxis, np.newaxis, :, *((np.newaxis,) * 4), :]
-        * field.coefficients[:, :, *((np.newaxis,) * 3), :, :, np.newaxis],
+        np.eye(2)[:, *((np.newaxis,) * 4), np.newaxis, np.newaxis, :]
+        * field.coefficients[np.newaxis, *((np.newaxis,) * 2), :, :, :, :, np.newaxis],
     )
 
     grad_basis = element.compute_field_gradient(
@@ -350,7 +354,7 @@ def test_integrate_grad_basis_dot_field(
 
     # int(grad_basis * field * jac_scale)
     expect = np.einsum(
-        "abcdg,abef,abhi,a,b,ab->cdgefhi",
+        "cdabg,abef,abhi,a,b,ab->gefhicd",
         grad_basis.coefficients,
         kronecker,
         kronecker,
@@ -363,7 +367,7 @@ def test_integrate_grad_basis_dot_field(
         pointfield, e_field, jacobian_scale=jac_scale
     )
 
-    np.testing.assert_almost_equal(result, expect)
+    np.testing.assert_almost_equal(result.coefficients, expect)
 
 
 def meshquad(X, Y, F):
@@ -468,7 +472,8 @@ def test_gll_build(deg):
         res_true = 2 / (i + 1)
         assert quad == pytest.approx(res_true, abs=1e-8), (
             "GLL quadrature must be exact for polynomials up to degree 2n-1"
-            f" ({2*deg - 1})! " + f"Failed at degree {i}."
+            f" ({2*deg - 1})! "
+            + f"Failed at degree {i}."
         )
 
     # verify L

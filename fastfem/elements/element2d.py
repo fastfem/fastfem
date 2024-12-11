@@ -3,10 +3,11 @@ import collections.abc as colltypes
 
 import numpy as np
 from numpy.typing import ArrayLike, NDArray
-import jax
 
+import fastfem.fields.numpy_similes as fnp
 from fastfem.elements.element import ElementBase, IsoparametricElement
 from fastfem.fields.field import Field as FieldType
+from fastfem.fields.field import ShapeComponent
 from fastfem.fields.field import _is_compatible as shapes_compatible
 
 
@@ -37,7 +38,7 @@ class Element2D(ElementBase, IsoparametricElement):
         field: FieldType,
         X: ArrayLike,
         Y: ArrayLike,
-    ) -> FieldType | jax.Array:
+    ) -> FieldType:
         """Evaluates field at (X,Y) in reference coordinates.
         The result is an array of values `field(X,Y)`.
 
@@ -57,10 +58,9 @@ class Element2D(ElementBase, IsoparametricElement):
             X = np.array(X)
         if not isinstance(Y, np.ndarray):
             Y = np.array(Y)
-        if not shapes_compatible(field.stack_shape, np.shape(X), np.shape(Y)):
+        if not shapes_compatible(np.shape(X), np.shape(Y)):
             raise ValueError(
-                f"field stack_shape {field.stack_shape} must be compatible with the"
-                f" shapes of X {np.shape(X)} and Y {np.shape(Y)}."
+                f"shapes of X {np.shape(X)} and Y {np.shape(Y)} are incompatible."
             )
         field, _ = FieldType.broadcast_field_compatibility(
             field, FieldType(self.basis_shape(), tuple(), np.array(0))
@@ -73,7 +73,7 @@ class Element2D(ElementBase, IsoparametricElement):
         field: FieldType,
         X: NDArray,
         Y: NDArray,
-    ) -> FieldType | jax.Array:
+    ) -> FieldType:
         """Evaluates field at (X,Y) in reference coordinates.
         The result is an array of values `field(X,Y)`.
 
@@ -126,10 +126,10 @@ class Element2D(ElementBase, IsoparametricElement):
             )
         else:
             self._verify_field_compatibilities(field=field, pos_field=pos_field)
-            if pos_field.field_shape != (2,):
+            if pos_field.point_shape != (2,):
                 raise ValueError(
-                    "pos_field must have field_shape (2,). Found"
-                    f" {pos_field.field_shape} instead."
+                    "pos_field must have point_shape (2,). Found"
+                    f" {pos_field.point_shape} instead."
                 )
             pos_field, field, _ = FieldType.broadcast_field_compatibility(
                 pos_field, field, FieldType(self.basis_shape(), tuple(), np.array(0))
@@ -175,7 +175,7 @@ class Element2D(ElementBase, IsoparametricElement):
         X: ArrayLike,
         Y: ArrayLike,
         pos_field: FieldType | None = None,
-    ) -> FieldType | jax.Array:
+    ) -> FieldType:
         """
         Calculates the gradient of a field f at the reference coordinates (X,Y).
         The result is an array of shape `(...,*fieldshape,2)`,
@@ -211,28 +211,23 @@ class Element2D(ElementBase, IsoparametricElement):
             Y = np.array(Y)
         if pos_field is None:
             self._verify_field_compatibilities(field=field)
-            if not shapes_compatible(field.stack_shape, np.shape(X), np.shape(Y)):
+            if not shapes_compatible(np.shape(X), np.shape(Y)):
                 raise ValueError(
-                    f"field stack_shape {field.stack_shape} must be compatible with the"
-                    f" shapes of X {np.shape(X)} and Y {np.shape(Y)}."
+                    f" shapes of X {np.shape(X)} and Y {np.shape(Y)} incompatible."
                 )
             field, _ = FieldType.broadcast_field_compatibility(
                 field, FieldType(self.basis_shape(), tuple(), np.array(0))
             )
         else:
             self._verify_field_compatibilities(field=field, pos_field=pos_field)
-            if not shapes_compatible(
-                field.stack_shape, pos_field.stack_shape, np.shape(X), np.shape(Y)
-            ):
+            if not shapes_compatible(np.shape(X), np.shape(Y)):
                 raise ValueError(
-                    f"field stack_shape {field.stack_shape} and pos_field stack_shape"
-                    f" {pos_field.stack_shape} must be compatible with the shapes of X"
-                    f" {np.shape(X)} and Y {np.shape(Y)}."
+                    f"shapes of X {np.shape(X)} and Y {np.shape(Y)} incompatible."
                 )
-            if pos_field.field_shape != (2,):
+            if pos_field.point_shape != (2,):
                 raise ValueError(
-                    "pos_field must have field_shape (2,). Found"
-                    f" {pos_field.field_shape} instead."
+                    "pos_field must have point_shape (2,). Found"
+                    f" {pos_field.point_shape} instead."
                 )
             pos_field, field, _ = FieldType.broadcast_field_compatibility(
                 pos_field, field, FieldType(self.basis_shape(), tuple(), np.array(0))
@@ -246,7 +241,7 @@ class Element2D(ElementBase, IsoparametricElement):
         X: NDArray,
         Y: NDArray,
         pos_field: FieldType | None,
-    ) -> FieldType | jax.Array:
+    ) -> FieldType:
         """
         Calculates the gradient of a field f at the reference coordinates (X,Y).
         The result is an array of shape `(...,*fieldshape,2)`,
@@ -294,7 +289,7 @@ class Element2D(ElementBase, IsoparametricElement):
         """
         Integrates `field` $f$ over the element. The result is the value of
         $\\int \\alpha f ~dV$ over the element, as an array of shape
-        `(...,*field_shape)`.
+        `(...,*point_shape)`.
 
         Args:
             pos_field (Field): an array representing the positions of the
@@ -313,10 +308,10 @@ class Element2D(ElementBase, IsoparametricElement):
         self._verify_field_compatibilities(
             pos_field=pos_field, field=field, jacobian_scale=jacobian_scale
         )
-        if pos_field.field_shape != (2,):
+        if pos_field.point_shape != (2,):
             raise ValueError(
-                "pos_field must have field_shape (2,). Found"
-                f" {pos_field.field_shape} instead."
+                "pos_field must have point_shape (2,). Found"
+                f" {pos_field.point_shape} instead."
             )
         pos_field, field, jacobian_scale, _ = FieldType.broadcast_field_compatibility(
             pos_field,
@@ -336,7 +331,7 @@ class Element2D(ElementBase, IsoparametricElement):
         """
         Integrates `field` $f$ over the element. The result is the value of
         $\\int \\alpha f ~dV$ over the element, as an array of shape
-        `(...,*field_shape)`.
+        `(...,*point_shape)`.
 
         Args:
             pos_field (Field): an array representing the positions of the
@@ -390,10 +385,10 @@ class Element2D(ElementBase, IsoparametricElement):
         self._verify_field_compatibilities(
             pos_field=pos_field, field=field, jacobian_scale=jacobian_scale
         )
-        if pos_field.field_shape != (2,):
+        if pos_field.point_shape != (2,):
             raise ValueError(
-                "pos_field must have field_shape (2,). Found"
-                f" {pos_field.field_shape} instead."
+                "pos_field must have point_shape (2,). Found"
+                f" {pos_field.point_shape} instead."
             )
         pos_field, field, jacobian_scale, _ = FieldType.broadcast_field_compatibility(
             pos_field,
@@ -477,10 +472,10 @@ class Element2D(ElementBase, IsoparametricElement):
         self._verify_field_compatibilities(
             pos_field=pos_field, jacobian_scale=jacobian_scale
         )
-        if pos_field.field_shape != (2,):
+        if pos_field.point_shape != (2,):
             raise ValueError(
-                "pos_field must have field_shape (2,). Found"
-                f" {pos_field.field_shape} instead."
+                "pos_field must have point_shape (2,). Found"
+                f" {pos_field.point_shape} instead."
             )
         pos_field, jacobian_scale, _ = FieldType.broadcast_field_compatibility(
             pos_field,
@@ -527,11 +522,19 @@ class Element2D(ElementBase, IsoparametricElement):
             "Element._mass_matrix() called, which delegates "
             + "to integrate_basis_times_field()"
         )
-        mat = self.integrate_basis_times_field(
-            pos_field,
-            self.basis_fields(),
-            None if indices is None else indices[: len(self.basis_shape())],
-            jacobian_scale,
+        mat = fnp.moveaxis(
+            self.integrate_basis_times_field(
+                pos_field,
+                fnp.moveaxis(
+                    self.basis_fields(),
+                    (ShapeComponent.STACK, 0),
+                    (ShapeComponent.POINT, 0),
+                ),
+                None if indices is None else indices[: len(self.basis_shape())],
+                jacobian_scale,
+            ),
+            (ShapeComponent.POINT, 0),
+            (ShapeComponent.BASIS, 0),
         )
         return (
             mat if indices is None else mat.basis[*indices[len(self.basis_shape()) :]]
@@ -571,10 +574,10 @@ class Element2D(ElementBase, IsoparametricElement):
         self._verify_field_compatibilities(
             pos_field=pos_field, field=field, jacobian_scale=jacobian_scale
         )
-        if pos_field.field_shape != (2,):
+        if pos_field.point_shape != (2,):
             raise ValueError(
-                "pos_field must have field_shape (2,). Found"
-                f" {pos_field.field_shape} instead."
+                "pos_field must have point_shape (2,). Found"
+                f" {pos_field.point_shape} instead."
             )
         pos_field, field, jacobian_scale, _ = FieldType.broadcast_field_compatibility(
             pos_field,
@@ -651,10 +654,10 @@ class Element2D(ElementBase, IsoparametricElement):
         self._verify_field_compatibilities(
             pos_field=pos_field, field=field, jacobian_scale=jacobian_scale
         )
-        if pos_field.field_shape != (2,):
+        if pos_field.point_shape != (2,):
             raise ValueError(
-                "pos_field must have field_shape (2,). Found"
-                f" {pos_field.field_shape} instead."
+                "pos_field must have point_shape (2,). Found"
+                f" {pos_field.point_shape} instead."
             )
         pos_field, field, jacobian_scale, _ = FieldType.broadcast_field_compatibility(
             pos_field,
@@ -788,7 +791,7 @@ class StaticElement2D(ElementBase, IsoparametricElement):
         """
         Integrates `field` $f$ over the element. The result is the value of
         $\\int \\alpha f ~dV$ over the element, as an array of shape
-        `(...,*field_shape)`.
+        `(...,*point_shape)`.
 
         Args:
             field (Field): an array of shape (*basis_shape,...,*fieldshape)
@@ -819,7 +822,7 @@ class StaticElement2D(ElementBase, IsoparametricElement):
         """
         Integrates `field` $f$ over the element. The result is the value of
         $\\int \\alpha f ~dV$ over the element, as an array of shape
-        `(...,*field_shape)`.
+        `(...,*point_shape)`.
 
         Args:
             field (Field): an array of shape (*basis_shape,...,*fieldshape)

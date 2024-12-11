@@ -211,11 +211,13 @@ def test_interpolate_field(element):
     constfield = Field(tuple(), tuple(), 3)
     for x, y in [(0, 0), (1, 0), (0, 1), (0.5, 0.5), (0.25, 0.25)]:
         field_outs = np.array([1 - x - y, x, y])
-        np.testing.assert_allclose(element.interpolate_field(field, x, y), field_outs)
-
-        assert element.interpolate_field(constfield, x, y) == pytest.approx(
-            constfield.coefficients
+        np.testing.assert_allclose(
+            element.interpolate_field(field, x, y).coefficients, field_outs
         )
+
+        assert element.interpolate_field(
+            constfield, x, y
+        ).coefficients == pytest.approx(constfield.coefficients)
 
 
 def test_integrate_field(transformed_element, triangle_quadrature):
@@ -225,24 +227,22 @@ def test_integrate_field(transformed_element, triangle_quadrature):
 
     field = element.basis_fields()
     jac_scale = Field(
-        element.basis_shape(), tuple(), field.coefficients[..., np.newaxis]
+        element.basis_shape(), tuple(), field.coefficients[:, np.newaxis, :]
     )
-    result = element.integrate_field(pts, field, jac_scale)
+    result = element.integrate_field(pts, field, jac_scale).coefficients
 
     field_quad = element.interpolate_field(
-        field,
-        ref_quad.knots[:, 0, np.newaxis, np.newaxis],
-        ref_quad.knots[:, 1, np.newaxis, np.newaxis],
-    )
+        field.stack[np.newaxis, :],
+        ref_quad.knots[:, 0],
+        ref_quad.knots[:, 1],
+    ).coefficients
     jac_quad = element.interpolate_field(
         jac_scale,
-        ref_quad.knots[:, 0, np.newaxis, np.newaxis],
-        ref_quad.knots[:, 1, np.newaxis, np.newaxis],
-    )
+        ref_quad.knots[:, 0],
+        ref_quad.knots[:, 1],
+    ).coefficients
 
-    quad_result = np.sum(
-        quad.weights[:, np.newaxis, np.newaxis] * field_quad * jac_quad, axis=0
-    )
+    quad_result = np.sum(quad.weights[:] * field_quad * jac_quad, axis=-1)
 
     np.testing.assert_allclose(result, quad_result, atol=1e-10)
 
@@ -254,38 +254,35 @@ def test_integrate_basis_times_field(transformed_element, triangle_quadrature):
 
     field = element.basis_fields()
     jac_scale = Field(
-        element.basis_shape(), tuple(), field.coefficients[..., np.newaxis]
+        element.basis_shape(), tuple(), field.coefficients[:, np.newaxis, :]
     )
     result = element.integrate_basis_times_field(pts, field, None, jac_scale)
 
     field_quad = element.interpolate_field(
         field,
-        ref_quad.knots[:, 0, np.newaxis, np.newaxis, np.newaxis],
-        ref_quad.knots[:, 1, np.newaxis, np.newaxis, np.newaxis],
-    )
+        ref_quad.knots[:, 0],
+        ref_quad.knots[:, 1],
+    ).coefficients
     jac_quad = element.interpolate_field(
         jac_scale,
-        ref_quad.knots[:, 0, np.newaxis, np.newaxis, np.newaxis],
-        ref_quad.knots[:, 1, np.newaxis, np.newaxis, np.newaxis],
-    )
+        ref_quad.knots[:, 0],
+        ref_quad.knots[:, 1],
+    ).coefficients
     basis_field = Field(
-        element.basis_shape(), tuple(), field.coefficients[..., np.newaxis, np.newaxis]
+        element.basis_shape(), tuple(), field.coefficients[:, np.newaxis, np.newaxis, :]
     )
     basis_quad = element.interpolate_field(
         basis_field,
-        ref_quad.knots[:, 0, np.newaxis, np.newaxis, np.newaxis],
-        ref_quad.knots[:, 1, np.newaxis, np.newaxis, np.newaxis],
-    )
+        ref_quad.knots[:, 0],
+        ref_quad.knots[:, 1],
+    ).coefficients
 
     quad_result = np.sum(
-        quad.weights[:, np.newaxis, np.newaxis, np.newaxis]
-        * field_quad
-        * jac_quad
-        * basis_quad,
-        axis=0,
+        quad.weights * field_quad * jac_quad * basis_quad,
+        axis=-1,
     )
 
-    np.testing.assert_allclose(result, quad_result, atol=1e-10)
+    np.testing.assert_allclose(result.coefficients, quad_result, atol=1e-10)
 
 
 def test_integrate_grad_basis_dot_field(transformed_element, triangle_quadrature):
@@ -295,41 +292,49 @@ def test_integrate_grad_basis_dot_field(transformed_element, triangle_quadrature
 
     field = element.basis_fields()
     jac_scale = Field(
-        element.basis_shape(), tuple(), field.coefficients[..., np.newaxis]
+        element.basis_shape(), tuple(), field.coefficients[:, np.newaxis, :]
     )
     basis_field = Field(
-        element.basis_shape(), tuple(), field.coefficients[..., np.newaxis, np.newaxis]
+        element.basis_shape(), tuple(), field.coefficients[:, np.newaxis, np.newaxis, :]
     )
     grad_basis = element.compute_field_gradient(basis_field, pts)
     basis_quad = element.interpolate_field(
         grad_basis,
-        ref_quad.knots[:, 0, np.newaxis, np.newaxis, np.newaxis],
-        ref_quad.knots[:, 1, np.newaxis, np.newaxis, np.newaxis],
-    )
+        ref_quad.knots[:, 0],
+        ref_quad.knots[:, 1],
+    ).coefficients
     for eind in range(2):
-        efield = Field(field.basis_shape, (2,), field.coefficients[..., np.newaxis])
+        efield = Field(
+            field.basis_shape,
+            (2,),
+            field.coefficients[..., np.newaxis] * np.eye(2)[:, eind],
+        )
 
         result = element.integrate_grad_basis_dot_field(pts, efield, None, jac_scale)
 
         field_quad = element.interpolate_field(
             efield,
-            ref_quad.knots[:, 0, np.newaxis, np.newaxis, np.newaxis],
-            ref_quad.knots[:, 1, np.newaxis, np.newaxis, np.newaxis],
-        )
+            ref_quad.knots[:, 0],
+            ref_quad.knots[:, 1],
+        ).coefficients
         jac_quad = element.interpolate_field(
             jac_scale,
-            ref_quad.knots[:, 0, np.newaxis, np.newaxis, np.newaxis],
-            ref_quad.knots[:, 1, np.newaxis, np.newaxis, np.newaxis],
-        )
+            ref_quad.knots[:, 0],
+            ref_quad.knots[:, 1],
+        ).coefficients
 
-        quad_result = np.sum(
-            quad.weights[:, np.newaxis, np.newaxis, np.newaxis]
-            * jac_quad
-            * np.einsum("...i,...i->...", field_quad, basis_quad),
-            axis=0,
-        )
+        quad_result = np.moveaxis(
+            np.sum(
+                quad.weights[:]
+                * jac_quad
+                * np.einsum("...i,...i->...", field_quad, basis_quad),
+                axis=-1,
+            ),
+            0,
+            -1,
+        )  # shift basis to right of stack
 
-        np.testing.assert_allclose(result, quad_result, atol=1e-10)
+        np.testing.assert_allclose(result.coefficients, quad_result, atol=1e-10)
 
 
 def test_field_gradient_const(element):
