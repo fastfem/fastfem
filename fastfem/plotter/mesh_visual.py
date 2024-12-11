@@ -1,9 +1,9 @@
 import numpy as np
 import time
 import pyvista as pv
-from pyvista import CellType, CornerAnnotation
+from pyvista import CellType
 
-#CornerAnnotation(position="upper_left", text=20)
+# CornerAnnotation(position="upper_left", text=20)
 
 import fastfem.mesh as m
 
@@ -221,7 +221,7 @@ class VisualMesh:
 
         # Creating file
         plotter.open_movie(filename)
-        #plotter.show()
+        # plotter.show()
         plotter.show(auto_close=False)
         plotter.write_frame()
         text = None
@@ -291,4 +291,4 @@ class VisualMesh:
             )
             plotter.write_frame()
 
-        plotter.close() 
+        plotter.close()

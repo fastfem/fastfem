@@ -1,7 +1,6 @@
 import numpy as np
 import pyvista as pv
 from unittest.mock import MagicMock
-import pytest
 
 import fastfem.mesh as m
 import fastfem.plotter as p
@@ -60,11 +59,13 @@ for i in range(time_steps):
 visualizer_triangle = p.VisualMesh(mesh_triangle)
 visualizer_quadrangle = p.VisualMesh(mesh_quadrangle)
 
+
 def test_triangle_define_plotter():
     grid = visualizer_triangle.define_plotter()
     assert isinstance(grid, pv.UnstructuredGrid)
     assert grid.n_cells > 0
     assert grid.n_points > 0
+
 
 # @pytest.mark.xfail(reason="This might fail with quadrangle elements")
 def test_quadrangle_define_plotter():
@@ -72,6 +73,7 @@ def test_quadrangle_define_plotter():
     assert isinstance(grid, pv.UnstructuredGrid)
     assert grid.n_cells > 0
     assert grid.n_points > 0
+
 
 def test_triangle_plot_mesh(monkeypatch):
     monkeypatch.setattr(pv.Plotter, "show", MagicMock())
@@ -82,6 +84,7 @@ def test_triangle_plot_mesh(monkeypatch):
         edge_thickness=np.random.randint(1, 10),
     )
 
+
 def test_quadrangle_plot_mesh(monkeypatch):
     monkeypatch.setattr(pv.Plotter, "show", MagicMock())
     visualizer_quadrangle.plot_mesh(
@@ -91,6 +94,7 @@ def test_quadrangle_plot_mesh(monkeypatch):
         edge_thickness=np.random.randint(1, 10),
     )
 
+
 def test_triangle_plot_data(monkeypatch):
     monkeypatch.setattr(pv.Plotter, "show", MagicMock())
     visualizer_triangle.plot_data(
@@ -98,12 +102,14 @@ def test_triangle_plot_data(monkeypatch):
         cmap=cmaps[np.random.randint(0, len(cmaps))],
     )
 
+
 def test_quadrangle_plot_data(monkeypatch):
     monkeypatch.setattr(pv.Plotter, "show", MagicMock())
     visualizer_quadrangle.plot_data(
         data=temperatures[np.random.randint(0, len(temperatures))],
         cmap=cmaps[np.random.randint(0, len(cmaps))],
     )
+
 
 # def test_make_movie():
 
