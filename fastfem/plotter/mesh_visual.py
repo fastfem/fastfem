@@ -273,7 +273,7 @@ class VisualMesh:
         # Creating file
         plotter.open_gif(filename)
         # plotter.show(auto_close=False)
-        plotter.write_frame()
+        # plotter.write_frame()
         text = None
 
         for i in range(1, frames):
