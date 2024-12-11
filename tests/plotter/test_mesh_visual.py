@@ -158,9 +158,7 @@ def test_make_movie(
     """
     visualizer = p.VisualMesh(mesh)
     filename = tmp_path / "test.mp4"
-    monkeypatch.setattr(
-        pv.Plotter, "write_frame", MagicMock()
-    )  # Added since pv.Plotter.open_movie() does not store frames in memory.
+    monkeypatch.setattr(pv.Plotter, "write_frame", MagicMock())
     monkeypatch.setattr(pv.Plotter, "close", MagicMock())
     visualizer.make_movie(
         filename=str(filename),
@@ -186,6 +184,7 @@ def test_make_gif(
     """
     visualizer = p.VisualMesh(mesh)
     filename = tmp_path / "test.gif"
+    monkeypatch.setattr(pv.Plotter, "write_frame", MagicMock())
     monkeypatch.setattr(pv.Plotter, "close", MagicMock())
     visualizer.make_gif(
         filename=str(filename),
