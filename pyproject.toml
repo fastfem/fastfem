@@ -74,7 +74,7 @@ check-types = "pyright fastfem tests" # hatch run check-types
 # Run the tests:
 test = "pytest" # hatch run tests
 # Run the tests and generate the coverage report as HTML:
-test-and-report = "coverage run -m pytest && coverage report && coverage html --show-contexts" # hatch run tests-and-coverage
+test-and-report = "coverage run -m pytest --verbose && coverage report && coverage html --show-contexts" # hatch run tests-and-coverage
 
 
 [tool.hatch.envs.docs]
