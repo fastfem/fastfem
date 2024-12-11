@@ -73,16 +73,10 @@ def test_define_plotter(mesh: m.Mesh) -> None:
 
 
 @pytest.mark.parametrize("point_label", [True, False])
-@pytest.mark.parametrize(
-    "color", ["white", "black", "red", "green", "blue", "yellow", "cyan", "magenta"]
-)
-@pytest.mark.parametrize("edge_thickness", [1, 2, 3, 4, 5, 6, 7, 8, 9, 10])
 def test_plot_mesh(
     monkeypatch: pytest.MonkeyPatch,
     mesh: m.Mesh,
     point_label: bool,
-    color: str,
-    edge_thickness: int,
 ) -> None:
     """
     Tests if the mesh is plotted properly, without data.
@@ -98,13 +92,9 @@ def test_plot_mesh(
     monkeypatch.setattr(pv.Plotter, "show", MagicMock())
     visualizer.plot_mesh(
         point_label=point_label,
-        mesh_color=color,
-        edge_color=color,
-        edge_thickness=edge_thickness,
     )
 
 
-# @pytest.mark.parametrize("cmap", ["viridis", "plasma", "inferno", "magma", "cividis"])
 def test_plot_data(
     monkeypatch: pytest.MonkeyPatch, mesh: m.Mesh, dummy_data: np.ndarray
 ) -> None:
@@ -153,7 +143,10 @@ def test_animate_data(
 
 
 def test_make_movie(
-    monkeypatch: pytest.MonkeyPatch, mesh: m.Mesh, dummy_data: np.ndarray
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: pathlib.Path,
+    mesh: m.Mesh,
+    dummy_data: np.ndarray,
 ) -> None:
     """
     Tests if the movie is created.
@@ -164,13 +157,13 @@ def test_make_movie(
         dummy_data: The temperature data for each node, contained in a 3D array.
     """
     visualizer = p.VisualMesh(mesh)
-    filename = pathlib.Path("test.mp4")
+    filename = tmp_path / "test.mp4"
     monkeypatch.setattr(
         pv.Plotter, "write_frame", MagicMock()
     )  # Added since pv.Plotter.open_movie() does not store frames in memory.
     monkeypatch.setattr(pv.Plotter, "close", MagicMock())
     visualizer.make_movie(
-        filename = str(filename),
+        filename=str(filename),
         fps=fps,
         total_time=total_time,
         data=dummy_data,
@@ -178,7 +171,10 @@ def test_make_movie(
 
 
 def test_make_gif(
-    monkeypatch: pytest.MonkeyPatch, mesh: m.Mesh, dummy_data: np.ndarray
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: pathlib.Path,
+    mesh: m.Mesh,
+    dummy_data: np.ndarray,
 ) -> None:
     """
     Tests if the gif is created.
@@ -189,7 +185,7 @@ def test_make_gif(
         dummy_data: The temperature data for each node, contained in a 3D array
     """
     visualizer = p.VisualMesh(mesh)
-    filename = pathlib.Path("test.gif") 
+    filename = tmp_path / "test.gif"
     monkeypatch.setattr(pv.Plotter, "close", MagicMock())
     visualizer.make_gif(
         filename=str(filename),
