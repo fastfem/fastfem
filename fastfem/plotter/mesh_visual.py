@@ -279,7 +279,7 @@ class VisualMesh:
         for i in range(1, frames):
             # Update the data
             grid.point_data["Temperature"] = data[i].flatten("F")
-            plotter.render()
+            plotter.update()
 
             # Update time text
             if text is not None:
