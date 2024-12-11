@@ -16,15 +16,6 @@ mesh = m.create_a_rectangle_mesh(
     file_name=None,
 )
 
-
-# Domains:
-bottom_boundary = mesh["bottom_boundary"]
-right_boundary = mesh["right_boundary"]
-top_boundary = mesh["top_boundary"]
-left_boundary = mesh["left_boundary"]
-rectangle = mesh["surface"]
-
-
 visualizer = p.VisualMesh(mesh)
 visualizer.plot_mesh()
 
@@ -34,28 +25,25 @@ fps = 25
 time_steps = int(total_time * fps)
 temperatures = np.zeros((time_steps, nv, nh))
 
-# Dummy data
-left_right_temp = 15
-top_temp = 5
-bottom_temp = 25
-for t in range(time_steps):
-    for i in range(nv):
-        for j in range(nh):
-            x = j / (nh - 1) * hl
-            y = i / (nv - 1) * vl
-            if j == 0 or j == nh - 1:
-                temperatures[t, i, j] = left_right_temp
-            elif i == 0:
-                temperatures[t, i, j] = bottom_temp
-            elif i == nv - 1:
-                temperatures[t, i, j] = top_temp
-            else:
-                temperatures[t, i, j] = 20 + 20 * np.sin(2 * np.pi * x / hl) * np.cos(
-                    2 * np.pi * y / vl
-                ) * np.sin(np.pi * t / time_steps)
+# Dummy Data
+left_temp = 0
+right_temp = 0
+top_temp = 0
+bottom_temp = 0
+min_temp = 0
+max_temp = 50
+
+temperatures = np.random.uniform(low=min_temp, high=max_temp, size=(time_steps, nv, nh))
+
+for i in range(time_steps):
+    temperatures[i, 0, :] = bottom_temp
+    temperatures[i, -1, :] = top_temp
+    temperatures[i, :, 0] = left_temp
+    temperatures[i, :, -1] = right_temp
 
 
-visualizer.animate_mesh(fps, total_time, temperatures)
+# Visualize
+visualizer.animate_data(fps, total_time, temperatures)
 
 filename_movie = "filename_movie.mp4"
 visualizer.make_movie(filename_movie, fps, total_time, temperatures)
