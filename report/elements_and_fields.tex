@@ -2,7 +2,7 @@ In order to use the weak formulation, \texttt{FastFEM} needs to know how to inte
 
 \begin{itemize}
 \item For linear triangular elements with shape functions $\{\phi_1,\phi_2,\phi_3\}$ having the Kronecker delta property for each vertex ($\phi_i(v_j) = \delta_{ij}$ for vertices $v_1,v_2,v_3$), the analytical solution to the integral is known, since the shape functions are linear.
-    
+
 \item Spectral elements (cit) have shape functions $\phi_{i_1,i_2}(F(x,y)) = L_{i_1}(x)L_{i_2}(y)$ for Lagrange interpolation polynomials $L_i$ based on GLL (Gauss-Lobatto-Legendre) quadrature, where $F$ denotes the coordinate transform from a reference space $[-1,1]^2$ to the element in the mesh's space. Integration is done using GLL quadrature in order to produce a diagonal mass matrix, so the integral is computed
 \begin{equation}
 \begin{aligned}
