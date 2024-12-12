@@ -19,38 +19,38 @@ where $J = \rho|\det DF|$ is the Jacobian with some scaling parameter $\rho$, wh
 \subsubsection{Elements}
 To employ the different behaviors, elements inherit from a superclass that with abstract methods for each integral. For $H^1$ elements in 2D, these are
 
-{\scriptsize
+
 \begin{verbatim}
 element.integrate_field(position_field, field, jacobian_scale)
 \end{verbatim}
-}
+
 \begin{equation}
 \int_{\Omega_E} f~dV
 \label{eqn:element_integrate_field}
 \end{equation}
-{\scriptsize
+
 \begin{verbatim}
 element.integrate_basis_times_field(position_field, field, indices, jacobian_scale)
 \end{verbatim}
-}
+
 \begin{equation}
 \int_{\Omega_E} \phi_i f~dV
 \label{eqn:element_integrate_basis_times_field}
 \end{equation}
-{\scriptsize
+
 \begin{verbatim}
 element.integrate_grad_basis_dot_field(position_field, field, indices, jacobian_scale)
 \end{verbatim}
-}
+
 \begin{equation}
 \int_{\Omega_E} (\nabla \phi_i)\cdot \mathbf{f}~dV
 \label{eqn:element_integrate_grad_basis_dot_field}
 \end{equation}
-{\scriptsize
+
 \begin{verbatim}
 element.integrate_grad_basis_dot_grad_field(position_field, field, indices, jacobian_scale)
 \end{verbatim}
-}
+
 \begin{equation}
 \int_{\Omega_E} (\nabla \phi_i)\cdot (\nabla f)~dV
 \label{eqn:element_integrate_grad_basis_dot_grad_field}

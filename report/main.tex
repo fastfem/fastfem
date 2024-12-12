@@ -32,24 +32,27 @@
     middlelinewidth=0,
     backgroundcolor=GhostWhite,
     roundcorner=3pt,
-    innerbottommargin=12pt,
-    innertopmargin=12pt,
+    innerbottommargin=6pt,
+    innertopmargin=6pt,
     innerleftmargin=12pt,
     innerrightmargin=12pt,
     skipbelow=-0pt
 ]{pythonbox}
-\newfontfamily\vscodefont{Droid Sans Mono}[NFSSFamily=VSCode]
+\newfontfamily\vscodefont{Droid Sans Mono}[NFSSFamily=VSCode, Scale=0.65]
 \newcommand{\pythonCodeBlock}[3]{%
     \begin{figure}
         \centering
         \begin{pythonbox}
-            \inputminted[fontfamily=VSCode, fontsize=\scriptsize]{python}{#1}
+            \inputminted[fontfamily=VSCode, baselinestretch=0.8]{python}{#1}
         \end{pythonbox}
         \caption{#2}
         \label{#3}
     \end{figure}
 }
 
+% Update verbatim environment to use VS Code font:
+\let\origverbatim\verbatim
+\def\verbatim{\origverbatim\vscodefont}
 
 \title{\texttt{FastFEM v0.0.1}}
 \subtitle{
