@@ -1,0 +1,3 @@
+# `fastfem.plotter`
+
+::: fastfem.plotter
