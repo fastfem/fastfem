@@ -5,8 +5,9 @@ import numpy as np
 import numpy.typing
 from numpy.typing import ArrayLike, NDArray
 
-import fastfem.elements.element as element
-from fastfem.fields.field import Field
+import fastfem.elements.element2d as element
+import fastfem.fields.numpy_similes as fnp
+from fastfem.fields.field import Field, FieldAxisIndex, ShapeComponent
 
 
 class DeformationGradient2DBadnessException(Exception):
@@ -183,14 +184,12 @@ class SpectralElement2D(element.Element2D):
         Returns:
             typing.Any: The interpolated values `field(X,Y)`
         """
-        field_pad = (np.newaxis,) * len(field.field_shape)
-        X = X[..., *field_pad]
-        Y = Y[..., *field_pad]
         # F^{i,j} L_{i,j}(X,Y)
         # lagrange_polys[i,k] : component c in term cx^k of poly i
-        return np.einsum(
-            "ij...,ia,...a,jb,...b->...",
-            field.coefficients,
+        return fnp.einsum(
+            ShapeComponent.BASIS,
+            "ij,ia,...a,jb,...b->...",
+            field,
             self._lagrange_polys,
             np.expand_dims(X, -1) ** np.arange(self.num_nodes),
             self._lagrange_polys,
@@ -567,36 +566,37 @@ class SpectralElement2D(element.Element2D):
                 at each point.
         """
 
-        x_deriv = np.einsum(
-            "ij...,ia->aj...",
-            field.coefficients,
+        x_deriv = fnp.einsum(
+            ShapeComponent.BASIS,
+            "ij,ia->aj",
+            field,
             self.lagrange_eval1D(1),
         )
-        y_deriv = np.einsum(
-            "ij...,jb->ib...",
-            field.coefficients,
+        y_deriv = fnp.einsum(
+            ShapeComponent.BASIS,
+            "ij,jb->ib",
+            field,
             self.lagrange_eval1D(1),
         )
-        grad = np.stack([x_deriv, y_deriv], -1)
+        grad = fnp.stack(
+            Field.broadcast_fields_full(x_deriv, y_deriv),
+            FieldAxisIndex(ShapeComponent.POINT, len(field.point_shape)),
+        )
 
         if pos_field is not None:
             # (*pointshape,*stackshape,2{i},2{j}): dX^i/dx_j
             # must pad after stackshape
-            field_pad = (np.newaxis,) * len(field.field_shape)
             def_grad = self.compute_field_gradient(pos_field)
             # grad is (*pointshape,*fieldshape,j): dF/dx_j
             # so we need the inverse
-            return self.Field(
-                np.einsum(
-                    "...ji,...j->...i",
-                    np.linalg.inv(def_grad.coefficients)[..., *field_pad, :, :],
-                    grad,
-                ),
-                False,
-                field.field_shape + (2,),
+            return fnp.einsum(
+                ShapeComponent.POINT,
+                "ji,...j->...i",
+                fnp.linalg.inv(def_grad),
+                grad,
             )
 
-        return self.Field(grad, False, field.field_shape + (2,))
+        return grad
 
     @typing.override
     def _interpolate_field_gradient(
@@ -605,7 +605,7 @@ class SpectralElement2D(element.Element2D):
         X: NDArray,
         Y: NDArray,
         pos_field: Field | None = None,
-    ) -> NDArray:
+    ) -> Field:
         """
         Calculates the gradient of a field f at the reference coordinates (X,Y).
         The result is an array of shape `(...,*fieldshape,2)`,
@@ -636,30 +636,34 @@ class SpectralElement2D(element.Element2D):
             NDArray: an array representing the gradient of the field evaluated
                 at each point.
         """
-        field_pad = (np.newaxis,) * len(field.field_shape)
-        X = X[..., *field_pad]
-        Y = Y[..., *field_pad]
 
-        x_deriv = np.einsum(
-            "ij...,i...,j...->...",
-            field.coefficients,
+        x_deriv = fnp.einsum(
+            ShapeComponent.BASIS,
+            "ij,i...,j...->...",
+            field,
             self.lagrange_eval1D(1, x=X),
             self.lagrange_eval1D(0, x=Y),
         )
-        y_deriv = np.einsum(
-            "ij...,i...,j...->...",
-            field.coefficients,
+        y_deriv = fnp.einsum(
+            ShapeComponent.BASIS,
+            "ij,i...,j...->...",
+            field,
             self.lagrange_eval1D(0, x=X),
             self.lagrange_eval1D(1, x=Y),
         )
-        grad = np.stack([x_deriv, y_deriv], -1)
+        grad = fnp.stack(
+            Field.broadcast_fields_full(x_deriv, y_deriv),
+            FieldAxisIndex(ShapeComponent.POINT, len(field.point_shape)),
+        )
 
         if pos_field is not None:
             # (*pointshape,*stackshape*,2{i},2{j}): dX^i/dx_j
             def_grad = self.interpolate_field_gradient(pos_field, X, Y)
             # grad is (*pointshape,*fieldshape,j): dF/dx_j
             # so we need the inverse
-            return np.einsum("...ji,...j->...i", np.linalg.inv(def_grad), grad)
+            return fnp.einsum(
+                ShapeComponent.POINT, "...ji,...j->...i", fnp.linalg.inv(def_grad), grad
+            )
 
         return grad
 
@@ -669,11 +673,11 @@ class SpectralElement2D(element.Element2D):
         pos_field: Field,
         field: Field,
         jacobian_scale: Field = Field(tuple(), tuple(), 1),
-    ) -> NDArray:
+    ) -> Field:
         """
         Integrates `field` $f$ over the element. The result is the value of
         $\\int \\alpha f ~dV$ over the element, as an array of shape
-        `(...,*field_shape)`.
+        `(...,*point_shape)`.
 
         Args:
             pos_field (ArrayLike): an array representing the positions of the
@@ -689,15 +693,15 @@ class SpectralElement2D(element.Element2D):
         Returns:
             NDArray: The resultant integral, an array of shape `(...,*fieldshape)`.
         """
-        field_pad = (np.newaxis,) * len(field.field_shape)
-        Jw = np.einsum(
-            "i,j,ij...,ij...->ij...",
+        Jw = fnp.einsum(
+            ShapeComponent.BASIS,
+            "i,j,ij,ij->ij",
             self.weights,
             self.weights,
-            np.abs(np.linalg.det(self.compute_field_gradient(pos_field).coefficients)),
-            jacobian_scale.coefficients,
-        )[..., *field_pad]
-        return np.einsum("ij...,ij...->...", Jw, field.coefficients)
+            fnp.abs(fnp.linalg.det(self.compute_field_gradient(pos_field))),
+            jacobian_scale,
+        )
+        return fnp.einsum(ShapeComponent.BASIS, "ij,ij->...", Jw, field)
 
     @typing.override
     def _integrate_basis_times_field(
@@ -706,7 +710,7 @@ class SpectralElement2D(element.Element2D):
         field: Field,
         indices: colltypes.Sequence[ArrayLike] | None = None,
         jacobian_scale: Field = Field(tuple(), tuple(), 1),
-    ) -> NDArray:
+    ) -> Field:
         """
         Computes the integral $\\int \\alpha \\phi_i f ~ dV$
         for fields $f$ and $\\alpha$, on this element, given by `field` and
@@ -732,17 +736,19 @@ class SpectralElement2D(element.Element2D):
                 `(indices.shape,...,*fieldshape)`, or `(*basis_shape,...,*fieldshape)`
                 if `indices` is None.
         """
-        field_pad = (np.newaxis,) * len(field.field_shape)
-        Jw = np.einsum(
-            "i,j,ij...,ij...->ij...",
+        Jw = fnp.einsum(
+            ShapeComponent.BASIS,
+            "i,j,ij,ij->ij",
             self.weights,
             self.weights,
-            np.abs(np.linalg.det(self.compute_field_gradient(pos_field).coefficients)),
-            jacobian_scale.coefficients,
-        )[..., *field_pad]
+            fnp.abs(fnp.linalg.det(self.compute_field_gradient(pos_field))),
+            jacobian_scale,
+        )
         if indices is None:
-            return np.einsum("ij...,ij...->ij...", Jw, field.coefficients)
-        return np.einsum("ij...,ij...->ij...", Jw, field.coefficients)[*indices, ...]
+            return fnp.einsum(ShapeComponent.BASIS, "ij,ij->ij", Jw, field)
+        return fnp.einsum(ShapeComponent.BASIS, "ij,ij->ij", Jw, field).basis[
+            *indices, ...
+        ]
 
     @typing.override
     def _mass_matrix(
@@ -750,7 +756,7 @@ class SpectralElement2D(element.Element2D):
         pos_field: Field,
         indices: colltypes.Sequence[np.ndarray] | None = None,
         jacobian_scale: Field = Field(tuple(), tuple(), 1),
-    ) -> NDArray:
+    ) -> Field:
         """
         Recovers the mass matrix entries $\\int \\alpha \\phi_i \\phi_j ~ dV$
         for this element. `pos_field` has shape `(basis_shape,...,2)`, where the
@@ -784,29 +790,49 @@ class SpectralElement2D(element.Element2D):
 
         # weights [i,j] times jacobian
 
-        Jw = np.einsum(
-            "i,j,ij...,ij...->ij...",
+        Jw = fnp.einsum(
+            ShapeComponent.BASIS,
+            "i,j,ij,ij->ij",
             self.weights,
             self.weights,
-            np.abs(np.linalg.det(self.compute_field_gradient(pos_field).coefficients)),
-            jacobian_scale.coefficients,
+            fnp.abs(fnp.linalg.det(self.compute_field_gradient(pos_field))),
+            jacobian_scale,
         )
-        aux_pad = tuple(np.newaxis for _ in range(len(Jw.shape) - 2))
         basis_dims = len(self.basis_shape())
         if indices is None:
-            return (
-                self.basis_fields().coefficients
-                * Jw[*(np.newaxis for _ in range(basis_dims)), ...]
+            double_basis = fnp.moveaxis(
+                fnp.moveaxis(
+                    self.basis_fields(),
+                    (ShapeComponent.STACK, 1),
+                    (ShapeComponent.BASIS, 0),
+                ),
+                (ShapeComponent.STACK, 0),
+                (ShapeComponent.BASIS, 0),
+            )
+            return fnp.einsum(
+                ShapeComponent.BASIS, "ijkl,...kl->ijkl", double_basis, Jw
             )
         indsI = np.array(indices[:basis_dims], dtype=int)
         indsJ = np.array(indices[basis_dims:], dtype=int)
-        Jw = Jw[*indsJ]
-        return np.where(
-            np.logical_and(
-                indsI[0, ...] == indsJ[0, ...], indsI[1, ...] == indsJ[1, ...]
-            )[..., *aux_pad],
-            Jw,
-            0,
+        # TODO create fnp.where
+        aux_pad = tuple(
+            np.newaxis
+            for _ in range(
+                len(Jw.shape) - Jw._axis_field_to_numpy((ShapeComponent.BASIS, -1)) - 1
+            )
+        )
+        Jw = Jw.basis[*indsJ]
+        return Field(
+            indsJ.shape,
+            tuple(),
+            np.where(
+                np.logical_and(
+                    indsI[0, ...] == indsJ[0, ...], indsI[1, ...] == indsJ[1, ...]
+                )[..., *aux_pad],
+                Jw.coefficients,
+                0,
+            ),
+            shape_order=Jw.shape_order,
         )
 
     @typing.override
@@ -816,7 +842,7 @@ class SpectralElement2D(element.Element2D):
         field: Field,
         indices: colltypes.Sequence[ArrayLike] | None = None,
         jacobian_scale: Field = Field(tuple(), tuple(), 1),
-    ) -> NDArray:
+    ) -> Field:
         """
         Computes the integral $\\int \\alpha \\nabla \\phi_i \\cdot f ~ dV$
         for a field $f$, on this element. The dot product takes the last axis of
@@ -845,26 +871,26 @@ class SpectralElement2D(element.Element2D):
                 if `indices` is None.
         """
 
-        # last index is contracted
-        field_pad = (np.newaxis,) * (len(field.field_shape) - 1)
-        def_grad = self.compute_field_gradient(pos_field).coefficients  # ^g_l
+        def_grad = self.compute_field_gradient(pos_field)  # ^g_l
         # int (grad phi1 . grad field)
-        w = np.einsum(
-            "i,j,ij...,ij...->ij...",
+        w = fnp.einsum(
+            ShapeComponent.BASIS,
+            "i,j,ij,ij->ij",
             self.weights,
             self.weights,
-            np.abs(np.linalg.det(def_grad)),
-            jacobian_scale.coefficients,
-        )[..., *field_pad]
+            fnp.abs(fnp.linalg.det(def_grad)),
+            jacobian_scale,
+        )
         # [k,i] L_k'(x_i)
         lag_div = self.lagrange_eval1D(1)
         # [i,j,...,dim] partial_dim field(xi,xj)
 
-        def_grad_inv = np.linalg.inv(def_grad)[..., *field_pad, :, :]  # ^l_g
-        field_local_upper = np.einsum(
-            "...lg,...g->...l",
+        def_grad_inv = fnp.linalg.inv(def_grad)  # ^l_g
+        field_local_upper = fnp.einsum(
+            ShapeComponent.POINT,
+            "lg,...g->...l",
             def_grad_inv,
-            field.coefficients,
+            field,
         )
 
         # integrand is
@@ -879,12 +905,22 @@ class SpectralElement2D(element.Element2D):
         #           + (field(xi,xj)) delta_{dim,1} delta_{mi} L_n'(xj) w_{ij}
         # = (field_0(xi,xn)) L_m'(xi)w_{in} + (field_1(xm,xj)) L_n'(xj) w_{mj}
 
-        KF = np.einsum(
-            "in...,mi,in...->mn...", field_local_upper[..., 0], lag_div, w
-        ) + np.einsum("mj...,nj,mj...->mn...", field_local_upper[..., 1], lag_div, w)
+        KF = fnp.einsum(
+            ShapeComponent.BASIS,
+            "in,mi,in->mn",
+            field_local_upper.point[..., 0],
+            lag_div,
+            w,
+        ) + fnp.einsum(
+            ShapeComponent.BASIS,
+            "mj,nj,mj->mn",
+            field_local_upper.point[..., 1],
+            lag_div,
+            w,
+        )
         if indices is None:
             return KF
-        return KF[*indices, ...]
+        return KF.basis[*indices, ...]
 
     @typing.override
     def _integrate_grad_basis_dot_grad_field(
@@ -893,7 +929,7 @@ class SpectralElement2D(element.Element2D):
         field: Field,
         indices: colltypes.Sequence[ArrayLike] | None = None,
         jacobian_scale: Field = Field(tuple(), tuple(), 1),
-    ) -> NDArray:
+    ) -> Field:
         """
         Computes the integral $\\int \\alpha \\nabla \\phi_i \\cdot \\nabla f ~ dV$
         for a field $f$, on this element. The dot product is over the gradients.
@@ -918,23 +954,25 @@ class SpectralElement2D(element.Element2D):
         """
         # compute using GLL quadrature
 
-        def_grad = self.compute_field_gradient(pos_field).coefficients
+        def_grad = self.compute_field_gradient(pos_field)
         # int (grad phi1 . grad field)
-        w = np.einsum(
-            "i,j,ij...,ij...->ij...",
+        w = fnp.einsum(
+            ShapeComponent.BASIS,
+            "i,j,ij,ij->ij",
             self.weights,
             self.weights,
-            np.abs(np.linalg.det(def_grad)),
-            jacobian_scale.coefficients,
+            fnp.abs(fnp.linalg.det(def_grad)),
+            jacobian_scale,
         )
         # [k,i] L_k'(x_i)
         lag_div = self.lagrange_eval1D(1)
         # [i,j,...,dim] partial_dim field(xi,xj)
 
-        grad_field_form = self.compute_field_gradient(field).coefficients
-        def_grad_inv = np.linalg.inv(def_grad)
-        grad_field = np.einsum(
-            "ij...ab,ij...db,ij...d->ij...a",
+        grad_field_form = self.compute_field_gradient(field)
+        def_grad_inv = fnp.linalg.inv(def_grad)
+        grad_field = fnp.einsum(
+            ShapeComponent.POINT,
+            "ab,db,...d->...a",
             def_grad_inv,
             def_grad_inv,
             grad_field_form,
@@ -952,9 +990,11 @@ class SpectralElement2D(element.Element2D):
         #           + (partial_dim field(xi,xj)) delta_{dim,1} delta_{mi} L_n'(xj) w_{ij}
         # = (partial_0 field(xi,xn)) L_m'(xi)w_{in} + (partial_1 field(xm,xj)) L_n'(xj) w_{mj}
 
-        KF = np.einsum(
-            "in...,mi,in...->mn...", grad_field[..., 0], lag_div, w
-        ) + np.einsum("mj...,nj,mj...->mn...", grad_field[..., 1], lag_div, w)
+        KF = fnp.einsum(
+            ShapeComponent.BASIS, "in,mi,in->mn", grad_field.point[..., 0], lag_div, w
+        ) + fnp.einsum(
+            ShapeComponent.BASIS, "mj,nj,mj->mn", grad_field.point[..., 1], lag_div, w
+        )
         if indices is None:
             return KF
-        return KF[*indices, ...]  # type: ignore
+        return KF.basis[*indices, ...]  # type: ignore

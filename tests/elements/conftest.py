@@ -102,12 +102,12 @@ def transform_stack(request):
     stacksize = np.prod(stackshape, dtype=int)
 
     def stack_transform(x: Field):
-        y = np.empty(x.basis_shape + stackshape + x.stack_shape + x.field_shape)
+        y = np.empty(x.basis_shape + stackshape + x.stack_shape + x.point_shape)
         transformed = [f(x.coefficients) for f in transforms]
         for i in range(stacksize):
             y[..., *np.unravel_index(i, stackshape), ...] = transformed[
                 i % len(transforms)
             ]
-        return Field(x.basis_shape, x.field_shape, y)
+        return Field(x.basis_shape, x.point_shape, y)
 
     return stack_transform

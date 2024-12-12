@@ -63,29 +63,36 @@ def test_field_construction():
         # this should fail
         field.Field(tuple(), tuple(), 1)._shape  # pyright: ignore
     for basis_shape in shapes_small():
-        for field_shape in shapes_small():
+        for point_shape in shapes_small():
             f = field.Field(
-                basis_shape, field_shape, np.empty(field_shape)
+                basis_shape, point_shape, np.empty(point_shape)
             )  # this will work
-            assert f.shape == (basis_shape, tuple(), field_shape)
+            assert f.shape == (tuple(), basis_shape, point_shape)
             for stack_shape in shapes_small():
-                coefs = np.empty(basis_shape + stack_shape + field_shape)
+                coefs = np.empty(stack_shape + basis_shape + point_shape)
                 f = field.Field(
                     basis_shape,
-                    field_shape,
+                    point_shape,
                     coefs,
                 )  # this will work
-                assert f.shape == (basis_shape, stack_shape, field_shape)
+                if not f.shape == (stack_shape, basis_shape, point_shape):
+                    f = field.Field(
+                        basis_shape,
+                        point_shape,
+                        coefs,
+                    )  # this will work
+
+                assert f.shape == (stack_shape, basis_shape, point_shape)
 
                 # these wont
                 if np.prod(basis_shape, dtype=int) > 1:
                     basis_shape_ = tuple(ax + 1 for ax in basis_shape)
                     with pytest.raises(field.FieldConstructionError):
-                        field.Field(basis_shape_, field_shape, coefs)
-                if np.prod(field_shape, dtype=int) > 1:
-                    field_shape_ = tuple(ax + 1 for ax in field_shape)
+                        field.Field(basis_shape_, point_shape, coefs)
+                if np.prod(point_shape, dtype=int) > 1:
+                    point_shape_ = tuple(ax + 1 for ax in point_shape)
                     with pytest.raises(field.FieldConstructionError):
-                        field.Field(basis_shape, field_shape_, coefs)
+                        field.Field(basis_shape, point_shape_, coefs)
 
 
 def test_shape_broadcastability_and_compatibility(comparison_three_shapes):
@@ -118,9 +125,9 @@ def test_field_broadcast_compatibility_on_triples(comparison_three_shapes):
             compatibility = field._is_compatible(a_, b_, c_) and (
                 len(nonconst) == 0 or all(nonconst[0] == s for s in nonconst)
             )
-            fa = field.Field(a, tuple(), np.random.rand(*(a + a_)))
-            fb = field.Field(b, tuple(), np.random.rand(*(b + b_)))
-            fc = field.Field(c, tuple(), np.random.rand(*(c + c_)))
+            fa = field.Field(a, tuple(), np.random.rand(*(a_ + a)))
+            fb = field.Field(b, tuple(), np.random.rand(*(b_ + b)))
+            fc = field.Field(c, tuple(), np.random.rand(*(c_ + c)))
             assert field.Field.are_compatible(fa, fb, fc) == compatibility, (
                 f"{fa.shape}, {fb.shape} and"
                 f" {fc.shape} broadcastibility should be"
@@ -140,19 +147,19 @@ def test_field_reshaping_errors():
     for a in shapes_small():
         for a_ in shapes_small():
             for a__ in shapes_small():
-                fa = field.Field(a, a__, np.random.rand(*(a + a_ + a__)))
+                fa = field.Field(a, a__, np.random.rand(*(a_ + a + a__)))
                 if np.prod(a, dtype=int) > 1:
                     adiff = tuple(ax + 1 for ax in a)
                     with pytest.raises(field.FieldShapeError):
-                        fa.broadcast_to_shape(adiff, a_, a__)
+                        fa.broadcast_to_shape(a_, adiff, a__)
                 if np.prod(a_, dtype=int) > 1:
                     a_diff = tuple(ax + 1 for ax in a_)
                     with pytest.raises(field.FieldShapeError):
-                        fa.broadcast_to_shape(a, a_diff, a__)
+                        fa.broadcast_to_shape(a_diff, a, a__)
                 if np.prod(a__, dtype=int) > 1:
                     a__diff = tuple(ax + 1 for ax in a__)
                     with pytest.raises(field.FieldShapeError):
-                        fa.broadcast_to_shape(a, a_, a__diff)
+                        fa.broadcast_to_shape(a_, a, a__diff)
 
 
 def test_field_broadcast_full_on_doubles(comparison_two_shapes):
@@ -167,8 +174,8 @@ def test_field_broadcast_full_on_doubles(comparison_two_shapes):
                 and field._is_compatible(a__, b__)
                 and (np.prod(b, dtype=int) == 1 or np.prod(a, dtype=int) == 1 or a == b)
             )
-            fa = field.Field(a, a__, np.random.rand(*(a + a_ + a__)))
-            fb = field.Field(b, b__, np.random.rand(*(b + b_ + b__)))
+            fa = field.Field(a, a__, np.random.rand(*(a_ + a + a__)))
+            fb = field.Field(b, b__, np.random.rand(*(b_ + b + b__)))
             assert field.Field.are_broadcastable(fa, fb) == broadcastibility, (
                 f"{fa.shape} and {fb.shape} broadcastibility should be"
                 f" {broadcastibility}."
@@ -178,7 +185,7 @@ def test_field_broadcast_full_on_doubles(comparison_two_shapes):
                 assert fa == fa2
                 assert fb == fb2
                 fa3 = fa.broadcast_to_shape(
-                    fa2.basis_shape, fa2.stack_shape, fa2.field_shape
+                    fa2.stack_shape, fa2.basis_shape, fa2.point_shape
                 )
                 assert fa3 == fa2
             else:
@@ -189,6 +196,7 @@ def test_field_broadcast_full_on_doubles(comparison_two_shapes):
 
 def test_field_accessors():
     def random_accessors(n, base_shape):
+        # yields n accessors for base_shape
         def rand_symbol(dimsize):
             if np.random.rand() < 0.5 and dimsize > 0:
                 return np.random.randint(dimsize)
@@ -200,23 +208,65 @@ def test_field_accessors():
                 k = np.random.randint(shapesize)
                 yield tuple(rand_symbol(base_shape[i]) for i in range(k))
 
+    def prod_chain(A, B, C):
+        return (A[..., *(None for _ in B.shape)] * B)[..., *(None for _ in C.shape)] * C
+
     for a in shapes_small():
         for b in shapes_small():
             for c in shapes_small():
-                f = field.Field(a, c, np.random.rand(*(a + b + c)))
+                coefs_A = np.array(np.random.rand(*a))
+                coefs_B = np.array(np.random.rand(*b))
+                coefs_C = np.array(np.random.rand(*c))
+                f = field.Field(b, c, prod_chain(coefs_A, coefs_B, coefs_C))
                 if len(f.coefficients.shape) == 0:
                     continue
                 for amod in random_accessors(5, a):
                     np.testing.assert_allclose(
-                        f.basis[*amod].coefficients, f.coefficients[*amod]
+                        f.stack[*amod].coefficients,
+                        prod_chain(coefs_A[amod], coefs_B, coefs_C),
                     )
-                slicepad = tuple(slice(None) for _ in a)
                 for bmod in random_accessors(5, b):
                     np.testing.assert_allclose(
-                        f.stack[*bmod].coefficients, f.coefficients[*slicepad, *bmod]
+                        f.basis[*bmod].coefficients,
+                        prod_chain(coefs_A, coefs_B[bmod], coefs_C),
                     )
-                slicepad = tuple(slice(None) for _ in a + b)
                 for cmod in random_accessors(5, c):
                     np.testing.assert_allclose(
-                        f.tensor[*cmod].coefficients, f.coefficients[*slicepad, *cmod]
+                        f.point[*cmod].coefficients,
+                        prod_chain(coefs_A, coefs_B, coefs_C[cmod]),
                     )
+
+
+def test_axis_recovery(field_of_different_shape_orders_testsep):
+    def validate_shapes(shapes):
+        arr = np.empty(shapes[0] + shapes[1] + shapes[2])
+        for f in field_of_different_shape_orders_testsep(shapes, arr):
+            assert f._component_offset(f.shape_order_inverse[0]) == 0
+            assert f._component_offset(f.shape_order_inverse[1]) == len(shapes[0])
+            assert f._component_offset(f.shape_order_inverse[2]) == len(
+                shapes[0]
+            ) + len(shapes[1])
+
+    validate_shapes([(2, 3, 2), (2, 2), (3, 3)])
+    validate_shapes([(2, 3), (4, 1), (1, 2)])
+
+
+def test_reshape_axis_down(field_of_different_shape_orders_testsep):
+    shapes = [(2, 3, 2), (2, 3), (2, 3)]
+    reshapes = [(12, 2, 3, 2, 3), (2, 3, 2, 6, 2, 3), (2, 3, 2, 2, 3, 6)]
+    arr = np.random.rand(*shapes[0], *shapes[1], *shapes[2])
+    for f in field_of_different_shape_orders_testsep(shapes, arr):
+        ind = f.shape_order[field.ShapeComponent.STACK]
+        np.testing.assert_allclose(
+            f.stack.reshape(-1).coefficients, np.reshape(arr, reshapes[ind])
+        )
+
+        ind = f.shape_order[field.ShapeComponent.BASIS]
+        np.testing.assert_allclose(
+            f.basis.reshape(-1).coefficients, np.reshape(arr, reshapes[ind])
+        )
+
+        ind = f.shape_order[field.ShapeComponent.POINT]
+        np.testing.assert_allclose(
+            f.point.reshape(-1).coefficients, np.reshape(arr, reshapes[ind])
+        )

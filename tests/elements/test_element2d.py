@@ -1,10 +1,12 @@
 import numpy as np
 import pytest
 
-from fastfem.elements.element import Element2D
+from fastfem.elements.element2d import Element2D
 from fastfem.elements.linear_simplex2d import LinearSimplex2D
-from fastfem.elements.spectral_element import SpectralElement2D
-from fastfem.fields.field import Field
+from fastfem.elements.spectral_element2d import SpectralElement2D
+from fastfem.fields import Field
+from fastfem.fields import numpy_similes as fnp
+from fastfem.fields.field import ShapeComponent
 
 # ======================================================================================
 #                                  Adding elements
@@ -20,7 +22,7 @@ from fastfem.fields.field import Field
 # additionally have the following tested separately:
 #
 #   - interpolate_field(field,x,y). Agreement between different configurations of
-#       stack_shape, field_shape or x,y shapes will be tested,
+#       stack_shape, point_shape or x,y shapes will be tested,
 #       as well as linearity of solutions. So, the developer only needs to test a
 #       spanning set of the scalar field space.
 #
@@ -114,9 +116,9 @@ def test_basis_and_reference_shapes(element: Element2D):
         "basis_fields() should have basis_shape == basis_shape(). "
         + f"basis_fields().basis_shape: {basis.basis_shape} basis_shape(): {shape}."
     )
-    assert basis.field_shape == tuple(), (
-        "basis_fields() should be a stack of scalar fields. Instead, field_shape =="
-        f" {basis.field_shape}."
+    assert basis.point_shape == tuple(), (
+        "basis_fields() should be a stack of scalar fields. Instead, point_shape =="
+        f" {basis.point_shape}."
     )
 
     ref_elem_pts = element.reference_element_position_field()
@@ -132,9 +134,9 @@ def test_basis_and_reference_shapes(element: Element2D):
         f" reference_element_position_field().stack_shape: {ref_elem_pts.stack_shape}"
     )
 
-    assert ref_elem_pts.field_shape == (2,), (
-        "reference_element_position_field() should have field_shape == (2,)."
-        f" reference_element_position_field().field_shape: {ref_elem_pts.field_shape}"
+    assert ref_elem_pts.point_shape == (2,), (
+        "reference_element_position_field() should have point_shape == (2,)."
+        f" reference_element_position_field().point_shape: {ref_elem_pts.point_shape}"
     )
 
 
@@ -169,21 +171,23 @@ def test_interpolate_field_linearity(
     element, coords = element_and_local_coords
 
     basis_shape = element.basis_shape()
-    contract_field_inds = tuple(-len(basis_shape) + i for i in range(len(basis_shape)))
-    contract_coefs_inds = tuple(range(len(basis_shape)))
 
     x = coords[..., 0]
     y = coords[..., 1]
-    x_padded = x[..., *(np.newaxis for ax in basis_shape)]
-    y_padded = y[..., *(np.newaxis for ax in basis_shape)]
     basis_field = element.basis_fields()
-    interped_fields = element.interpolate_field(basis_field, x_padded, y_padded)
+    interped_fields = element.interpolate_field(basis_field, x, y)
+    collapse_str = "ABCDEFGHIJKLMNOPQURSTUVWXYZ"[: len(element.basis_shape())]
     for field_coefs in random_basis_coefs(element):
-        expected = np.tensordot(
-            interped_fields, field_coefs, (contract_field_inds, contract_coefs_inds)
-        )
+        expected = fnp.einsum(
+            ShapeComponent.STACK,
+            f"{collapse_str},{collapse_str}",
+            interped_fields,
+            field_coefs,
+        ).coefficients
         np.testing.assert_allclose(
-            element.interpolate_field(Field(basis_shape, tuple(), field_coefs), x, y),
+            element.interpolate_field(
+                Field(basis_shape, tuple(), field_coefs), x, y
+            ).coefficients,
             expected,
             atol=1e-8,
         )
@@ -198,12 +202,11 @@ def test_compute_field_gradient(elem: str):
     element = elements_to_test[elem]
     coords = element_test_localcoords[elem]
     basis_field = element.basis_fields()
-    basis_shape = element.basis_shape()
 
     # =======verify local derivs=======
     grads = element.compute_field_gradient(basis_field)
-    x_padded = coords[..., 0, *(np.newaxis for ax in basis_shape)]
-    y_padded = coords[..., 1, *(np.newaxis for ax in basis_shape)]
+    x_padded = coords[..., 0]
+    y_padded = coords[..., 1]
 
     grad_at_pts = element.interpolate_field(grads, x_padded, y_padded)
 
@@ -212,13 +215,14 @@ def test_compute_field_gradient(elem: str):
     grad_finite_diff_x = (
         element.interpolate_field(basis_field, x_padded + eps, y_padded)
         - element.interpolate_field(basis_field, x_padded - eps, y_padded)
-    ) / (2 * eps)
+    ).coefficients / (2 * eps)
     grad_finite_diff_y = (
         element.interpolate_field(basis_field, x_padded, y_padded + eps)
         - element.interpolate_field(basis_field, x_padded, y_padded - eps)
-    ) / (2 * eps)
+    ).coefficients / (2 * eps)
     np.testing.assert_allclose(
-        grad_at_pts - np.stack((grad_finite_diff_x, grad_finite_diff_y), axis=-1),
+        grad_at_pts.coefficients
+        - np.stack((grad_finite_diff_x, grad_finite_diff_y), axis=-1),
         0,
         atol=(eps**2) * 1e2,  # central diff has error O(h^2). give a constant factor
     )
@@ -228,9 +232,7 @@ def test_compute_field_gradient(elem: str):
 def test_integrate_grad_basis_dot_grad_field(elem: str, affine_transforms):
     element = elements_to_test[elem]
     field = element.basis_fields()
-    jac_scale = Field(
-        element.basis_shape(), tuple(), field.coefficients[..., np.newaxis, np.newaxis]
-    )
+    jac_scale = field.stack[..., *(np.newaxis for _ in field.basis_shape)]
     ref_points = element.reference_element_position_field().coefficients
 
     for name, T in affine_transforms:
@@ -243,8 +245,8 @@ def test_integrate_grad_basis_dot_grad_field(elem: str, affine_transforms):
             points, field, None, jac_scale
         )
         np.testing.assert_allclose(
-            stiffness_computed,
-            stiffness,
+            stiffness_computed.coefficients,
+            stiffness.coefficients,
             err_msg=(
                 "Failed agreement between integrate_grad_basis_dot_field and"
                 f" integrate_grad_basis_dot_field for element transformed by '{name}'"
@@ -270,7 +272,9 @@ def test_mass_matrix(element, affine_transforms):
         )
         mat_by_method = element.mass_matrix(pos_matrix)
 
-        np.testing.assert_allclose(mat_by_method, mat_by_integ_basis, atol=1e-8)
+        np.testing.assert_allclose(
+            mat_by_method.coefficients, mat_by_integ_basis.coefficients, atol=1e-8
+        )
 
         # and also test a few elements individually:
         for _ in range(10):
@@ -278,7 +282,9 @@ def test_mass_matrix(element, affine_transforms):
             indJ = np.unravel_index(np.random.randint(basis_size), basis_shape)
             mat_inds = element.mass_matrix(pos_matrix, indices=indI + indJ)
             np.testing.assert_allclose(
-                mat_inds, mat_by_method[*(indI + indJ), ...], atol=1e-8
+                mat_inds.coefficients,
+                mat_by_method.coefficients[..., *(indI + indJ)],
+                atol=1e-8,
             )
 
 
@@ -297,8 +303,10 @@ def test_interpolate_field_gradient(
         element.compute_field_gradient(basis_field), x_padded, y_padded
     )
     np.testing.assert_allclose(
-        element.interpolate_field_gradient(basis_field, x_padded, y_padded),
-        interped_grads,
+        element.interpolate_field_gradient(
+            basis_field, x_padded, y_padded
+        ).coefficients,
+        interped_grads.coefficients,
         atol=1e-8,
     )
     ref_points = element.reference_element_position_field().coefficients
@@ -313,24 +321,20 @@ def test_interpolate_field_gradient(
         np.testing.assert_allclose(
             element.interpolate_field_gradient(
                 basis_field, x_padded, y_padded, pos_matrix
-            ),
-            interped_grads,
+            ).coefficients,
+            interped_grads.coefficients,
             atol=1e-8,
         )
 
 
 def test_incompatible_fields_throw(element: Element2D):
     pos_field = element.reference_element_position_field()
-    pos_stack = Field(
-        pos_field.basis_shape,
-        (2,),
-        pos_field.coefficients[..., np.newaxis, :] * np.ones((10, 1)),
-    )
+    pos_stack = pos_field.stack[np.newaxis].stack[np.zeros(10, dtype=int)]
     field_stack = Field(
-        pos_field.basis_shape, tuple(), np.zeros(pos_field.basis_shape + (2,))
+        pos_field.basis_shape, tuple(), np.zeros((2,) + pos_field.basis_shape)
     )
     field_stack_incomp = Field(
-        pos_field.basis_shape, tuple(), np.zeros(pos_field.basis_shape + (3,))
+        pos_field.basis_shape, tuple(), np.zeros((3,) + pos_field.basis_shape)
     )
     bad_basis = Field(
         pos_field.basis_shape + (2,), tuple(), np.zeros(pos_field.basis_shape + (2,))
@@ -339,7 +343,7 @@ def test_incompatible_fields_throw(element: Element2D):
         pos_field.basis_shape + (2,), (2,), np.zeros(pos_field.basis_shape + (2, 2))
     )
     X_incomp = np.array([0, 0, 0, 0])
-    Y_incomp = np.array([0, 0, 0, 0])
+    Y_incomp = np.array([0, 0, 0])
 
     with pytest.raises(ValueError):  # incompatible stacks
         element.interpolate_field(field_stack, X_incomp, Y_incomp)
