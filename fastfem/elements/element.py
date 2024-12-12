@@ -2,9 +2,25 @@ import abc
 import warnings
 
 import numpy as np
-from numpy.typing import NDArray
+from numpy.typing import ArrayLike
 
 from fastfem.fields.field import Field as FieldType
+
+
+WARNINGS_ENABLED = False
+
+
+def _set_warnings_enabled(enable_warnings: bool):
+    """Elements may send developer warnings if a default method is used (for example,
+    gradient interpolation computes the gradient field, then interpolates it by default,
+    which may be slower than computing gradients only at interpolation points). These
+    warnings can be enabled/disabled through this function.
+
+    Args:
+        enable_warnings (bool): True to enable warnings. False to disable.
+    """
+    global WARNINGS_ENABLED
+    WARNINGS_ENABLED = enable_warnings
 
 
 class ElementBase(abc.ABC):
@@ -38,7 +54,8 @@ class ElementBase(abc.ABC):
         Returns:
             _type_: _description_
         """
-        warnings.warn(f"Element developer message: {message}")
+        if WARNINGS_ENABLED:
+            warnings.warn(f"Element developer message: {message}")
 
 
 class IsoparametricElement(abc.ABC):
@@ -66,7 +83,7 @@ class IsoparametricElement(abc.ABC):
 
     # this emulates a member class definition
     def Field(
-        self, field: NDArray, is_const: bool, point_shape: tuple[int, ...] = tuple()
+        self, field: ArrayLike, is_const: bool, point_shape: tuple[int, ...] = tuple()
     ) -> FieldType:
         """Converts a `numpy` array to a `Field` object that can be used by this
         element class.
@@ -90,6 +107,8 @@ class IsoparametricElement(abc.ABC):
             Field: An object corresponding to the given field.
         """
         basis_shape = self.basis_shape()
+        if not isinstance(field,np.ndarray):
+            field = np.array(field)
         return FieldType(
             basis_shape,
             point_shape,

@@ -607,7 +607,7 @@ class Field:
         object.__setattr__(
             self,
             "coefficients",
-            np.broadcast_to(coefficients, shapes[0] + shapes[1] + shapes[2]),
+            np_or_jnp(use_jax).broadcast_to(coefficients, shapes[0] + shapes[1] + shapes[2]),
         )
         object.__setattr__(self, "basis_shape", basis_shape)
         object.__setattr__(self, "point_shape", point_shape)
@@ -660,6 +660,9 @@ class Field:
             )
         raise NotImplementedError
 
+    def __radd__(self, other: Union["Field", float]):
+        return self.__add__(other)
+
     def __sub__(self, other: Union["Field", float]):
         if isinstance(other, Field):
             a, b = Field.broadcast_fields_full(self, other)
@@ -710,7 +713,26 @@ class Field:
                 shape_order=a.shape_order,
                 use_jax=a.use_jax or b.use_jax,
             )
+        elif isinstance(other, float):
+            return Field(
+                self.basis_shape,
+                self.point_shape,
+                self.coefficients * other,
+                shape_order=self.shape_order,
+                use_jax=self.use_jax,
+            )
         raise NotImplementedError
+
+    def __rmul__(self, other: Union["Field", float]):
+        return self.__mul__(other)
+    def __neg__(self):
+        return Field(
+            self.basis_shape,
+            self.point_shape,
+            -self.coefficients,
+            shape_order=self.shape_order,
+            use_jax=self.use_jax,
+        )
 
     def get_shape(self, component: ShapeComponent) -> tuple[int, ...]:
         """Recovers the shape of the specified component. This shape is in the same
@@ -1015,6 +1037,6 @@ class Field:
         if not Field.are_broadcastable(self, other):
             return False
 
-        return np.array_equiv(
+        return np_or_jnp(self,other).array_equiv(
             *(f.coefficients for f in Field.broadcast_fields_full(self, other))
         )

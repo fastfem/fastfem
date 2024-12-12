@@ -8,6 +8,7 @@ import fastfem.fields.numpy_similes as fnp
 from fastfem.elements.element2d import StaticElement2D
 from fastfem.elements.linear_simplex2d import LinearSimplex2D
 from fastfem.fields.field import Field, FieldAxisIndex, ShapeComponent
+from fastfem.fields.field_operations import assemble_field_add
 from fastfem.mesh import Mesh, create_a_rectangle_mesh
 
 atom = LinearSimplex2D()
@@ -75,6 +76,20 @@ class LinearSimplexMesh2D(StaticElement2D):
             (ShapeComponent.STACK, 0),
         )
 
+    def from_atomstack_accumulate(self, field: Field) -> Field:
+        """Takes a field stack from the atomic (LinearSimplex2D) bases into the Mesh basis,
+        where the field on each element `i` of the mesh corresponds to
+        `atomstack.stack[i,...]`. The leading stack component is contracted. Repeated
+        nodes are added, so this method is used to add integrals of shape functions.
+
+        Args:
+            field (Field): The field to convert.
+
+        Returns:
+            Field: The field in the mesh basis.
+        """
+        return assemble_field_add(field,self.element_node_indices,self.basis_shape())
+
     @typing.override
     def basis_shape(self) -> tuple[int, ...]:
         return (self.num_nodes,)
@@ -87,7 +102,7 @@ class LinearSimplexMesh2D(StaticElement2D):
     def _integrate_field(self, field: Field, jacobian_scale: Field) -> Field:
         return fnp.sum(
             atom._integrate_field(
-                self.position_field_atomstack,
+                self.position_field_atomstack.stack[:,*(np.newaxis for _ in field.stack_shape)],
                 self.to_atomstack(field),
                 self.to_atomstack(jacobian_scale),
             ),
@@ -98,42 +113,45 @@ class LinearSimplexMesh2D(StaticElement2D):
     def _integrate_basis_times_field(
         self, field: Field, indices: colltypes.Sequence | None, jacobian_scale: Field
     ) -> Field:
-        return fnp.sum(
+        if indices is not None:
+            raise NotImplementedError("Index assembly not yet implemented")
+        return self.from_atomstack_accumulate(
             atom._integrate_basis_times_field(
-                self.position_field_atomstack,
+                self.position_field_atomstack.stack[:,*(np.newaxis for _ in field.stack_shape)],
                 self.to_atomstack(field),
-                indices,
-                self.to_atomstack(jacobian_scale),
-            ),
-            FieldAxisIndex(ShapeComponent.STACK, 0),
+                indices=None,
+                jacobian_scale=self.to_atomstack(jacobian_scale),
+            )
         )
 
     @typing.override
     def _integrate_grad_basis_dot_field(
         self, field: Field, indices: colltypes.Sequence | None, jacobian_scale: Field
     ) -> Field:
-        return fnp.sum(
+        if indices is not None:
+            raise NotImplementedError("Index assembly not yet implemented")
+        return self.from_atomstack_accumulate(
             atom._integrate_grad_basis_dot_field(
-                self.position_field_atomstack,
+                self.position_field_atomstack.stack[:,*(np.newaxis for _ in field.stack_shape)],
                 self.to_atomstack(field),
-                indices,
-                self.to_atomstack(jacobian_scale),
+                indices=None,
+                jacobian_scale=self.to_atomstack(jacobian_scale),
             ),
-            FieldAxisIndex(ShapeComponent.STACK, 0),
         )
 
     @typing.override
     def _integrate_grad_basis_dot_grad_field(
         self, field: Field, indices: colltypes.Sequence | None, jacobian_scale: Field
     ) -> Field:
-        return fnp.sum(
+        if indices is not None:
+            raise NotImplementedError("Index assembly not yet implemented")
+        return self.from_atomstack_accumulate(
             atom._integrate_grad_basis_dot_grad_field(
-                self.position_field_atomstack,
+                self.position_field_atomstack.stack[:,*(np.newaxis for _ in field.stack_shape)],
                 self.to_atomstack(field),
-                indices,
-                self.to_atomstack(jacobian_scale),
+                indices=None,
+                jacobian_scale=self.to_atomstack(jacobian_scale),
             ),
-            FieldAxisIndex(ShapeComponent.STACK, 0),
         )
 
 
