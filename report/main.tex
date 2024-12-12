@@ -180,7 +180,7 @@ Then, equation \ref{eqn:matrix_form} is a linear system of equations, and may be
 
 This section summarizes \texttt{FastFEM v0.0.1}'s features and capabilities: mesh generation, solving parabolic PDEs with FEM using elements and fields, and plotting.
 
-\subsection{Mesher}
+\subsection{Mesher} \label{sec:mesher}
 
 \texttt{FastFEM} uses Gmsh\supercite{Gmsh} for mesh generation. Currently, \texttt{v0.0.1} offers two fundamental 2D mesh generation functions, as shown in \autoref{fig:mesh-example1}.  The results of the functions are shown in \autoref{fig:mesh}. \texttt{FastFEM} is fully statically typed so that users can get autocomplete suggestions when writing the function's arguments and using the mesh object it returns.
 
@@ -195,7 +195,7 @@ This section summarizes \texttt{FastFEM v0.0.1}'s features and capabilities: mes
 
         \caption{Square mesh.}
         \label{fig:square}
-    \end{subfigure}
+    \end{subfigure}s
     \hspace{0.1\textwidth}
     \begin{subfigure}[c]{0.4\textwidth}
         \centering
@@ -219,7 +219,7 @@ This section summarizes \texttt{FastFEM v0.0.1}'s features and capabilities: mes
     \label{fig:arbitrarymesh}
 \end{figure}
 
-\subsection{Elements and Fields}
+\subsection{Elements and Fields}\label{sec:elem_field}
 \input{elements_and_fields.tex}
 \subsection{Plotter}
 \input{plotter.tex}
