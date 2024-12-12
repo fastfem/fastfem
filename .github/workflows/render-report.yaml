@@ -22,8 +22,7 @@ jobs:
         uses: devcontainers/ci@v0.3
         with:
           configFile: .devcontainer/report/devcontainer.json
-          # Change this to be your CI task/script
-          runCmd: latexmk -lualatex report/main.tex
+          runCmd: cd report && latexmk -halt-on-error -lualatex main.tex
 
       - name: Upload PDF artifact
         uses: actions/upload-artifact@v4
