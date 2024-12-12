@@ -16,9 +16,11 @@ path = "fastfem/__init__.py"
 [project]
 dependencies = [
     "jax==0.4.35",
+    "numpy==2.2.0",
     "matplotlib==3.9.3",
     "gmsh==4.13.1",
-    "pyvista==0.44.2",
+    "pyvista[all]==0.44.2",
+    "vtk==9.3.0"
 ]
 authors = [
     { name = 'Sina Atalay', email = 'dev@atalay.biz' },
@@ -72,7 +74,7 @@ check-types = "pyright fastfem tests" # hatch run check-types
 # Run the tests:
 test = "pytest" # hatch run tests
 # Run the tests and generate the coverage report as HTML:
-test-and-report = "coverage run -m pytest && coverage report && coverage html --show-contexts" # hatch run tests-and-coverage
+test-and-report = "coverage run -m pytest --verbose && coverage report && coverage html --show-contexts" # hatch run tests-and-coverage
 
 
 [tool.hatch.envs.docs]
