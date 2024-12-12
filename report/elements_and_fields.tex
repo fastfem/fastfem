@@ -1,0 +1,64 @@
+In order to use the weak formulation, \texttt{FastFEM} needs to know how to integrate functions on a given mesh. Each element type specifies both the shape functions and the algorithm used to integrate a function on that element. For example, the mass matrix entries (\ref{eqn:mass_matrix}) on two different element types are:
+
+\begin{itemize}
+\item For linear triangular elements with shape functions $\{\phi_1,\phi_2,\phi_3\}$ having the Kronecker delta property for each vertex ($\phi_i(v_j) = \delta_{ij}$ for vertices $v_1,v_2,v_3$), the analytical solution to the integral is known, since the shape functions are linear.
+    
+\item Spectral elements (cit) have shape functions $\phi_{i_1,i_2}(F(x,y)) = L_{i_1}(x)L_{i_2}(y)$ for Lagrange interpolation polynomials $L_i$ based on GLL (Gauss-Lobatto-Legendre) quadrature, where $F$ denotes the coordinate transform from a reference space $[-1,1]^2$ to the element in the mesh's space. Integration is done using GLL quadrature in order to produce a diagonal mass matrix, so the integral is computed
+\begin{equation}
+\begin{aligned}
+    \int_{\Omega_{SE}} \phi_{i_1,i_2}\phi_{j_1,j_2} ~dV = \int_{\Omega_{SE}} L_{i_1}(x)L_{i_2}(y)L_{j_1}(x)L_{j_2}(y) ~dV \\
+    \approx \sum_{k_1,k_2=0}^N \alpha_{k_1}\alpha_{k_2} J(F(t_{k_1},t_{k_2}))L_{i_1}(t_{k_1})L_{i_2}(t_{k_2})L_{j_1}(t_{k_1})L_{j_2}(t_{k_2}) \\
+    = \alpha_{i_1}\alpha_{i_2}J(F(t_{k_1},t_{k_2}))\delta_{i_1,j_1}\delta_{i_2,j_2}
+\end{aligned},
+\label{eqn:spectral_mass_matrix}
+\end{equation}
+where $J = \rho|\det DF|$ is the Jacobian with some scaling parameter $\rho$, which may vary in space. This is relevant for PDEs with a varying mass term.
+\end{itemize}
+
+
+\subsubsection{Elements}
+To employ the different behaviors, elements inherit from a superclass that with abstract methods for each integral. For $H^1$ elements in 2D, these are
+
+{\scriptsize
+\begin{verbatim}
+element.integrate_field(position_field, field, jacobian_scale)
+\end{verbatim}
+}
+\begin{equation}
+\int_{\Omega_E} f~dV
+\label{eqn:element_integrate_field}
+\end{equation}
+{\scriptsize
+\begin{verbatim}
+element.integrate_basis_times_field(position_field, field, indices, jacobian_scale)
+\end{verbatim}
+}
+\begin{equation}
+\int_{\Omega_E} \phi_i f~dV
+\label{eqn:element_integrate_basis_times_field}
+\end{equation}
+{\scriptsize
+\begin{verbatim}
+element.integrate_grad_basis_dot_field(position_field, field, indices, jacobian_scale)
+\end{verbatim}
+}
+\begin{equation}
+\int_{\Omega_E} (\nabla \phi_i)\cdot \mathbf{f}~dV
+\label{eqn:element_integrate_grad_basis_dot_field}
+\end{equation}
+{\scriptsize
+\begin{verbatim}
+element.integrate_grad_basis_dot_grad_field(position_field, field, indices, jacobian_scale)
+\end{verbatim}
+}
+\begin{equation}
+\int_{\Omega_E} (\nabla \phi_i)\cdot (\nabla f)~dV
+\label{eqn:element_integrate_grad_basis_dot_grad_field}
+\end{equation}
+
+Indices specify which basis functions should be computed. This is helpful for spectral elements, where only diagonal basis entries are needed. These functions implement integration against a field instead of two shape functions. This is because it may be computationally efficient to compute the contracted values $(I_{ij}u^j)_i$ instead of computing the matrix first, then contracting. For example, the stiffness matrix entries (\ref{eqn:stiffness_matrix}) are never used directly for the heat equation (\ref{pde}), but instead are used in contraction with the heat field $f$. This contraction is to produce the integral (\ref{eqn:element_integrate_grad_basis_dot_grad_field}), which can just be called by itself. If uncontracted matrix entries are desired, one can easily integrate each basis function individually.
+
+\subsubsection{Fields}
+
+\paragraph{Field Stacking}
+\paragraph{The Mesh Element}

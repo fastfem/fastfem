@@ -111,6 +111,22 @@ In this report, the theory behind FEM is summarized. The features and capabiliti
 
 \section{Theory}
 
+TODO: when filling this section, please note that these equations are referenced outside this section. You can change the equation (function labels/etc, like if you want to use a different symbol than $K$ for the stiffness) if you perfer a different format, but the main idea should stay the same.
+
+
+
+\begin{equation}
+    M(\phi_i,\phi_j) = \int_{\Omega}\phi_i \phi_j~dV
+    \label{eqn:mass_matrix}
+\end{equation}
+
+\begin{equation}
+    K(\phi_i,\phi_j) = \int_{\Omega}(\nabla\phi_i)\cdot (\nabla\phi_j)~dV
+    \label{eqn:stiffness_matrix}
+\end{equation}
+
+
+
 \section{Features and Capabilities}
 
 This section summarizes \texttt{FastFEM v0.0.1}'s features and capabilities: mesh generation, solving parabolic PDEs with FEM using elements and fields, and plotting.
@@ -155,7 +171,7 @@ This section summarizes \texttt{FastFEM v0.0.1}'s features and capabilities: mes
 \end{figure}
 
 \subsection{Elements and Fields}
-
+\input{elements_and_fields.tex}
 \subsection{Plotter}
 
 \section{Results}
