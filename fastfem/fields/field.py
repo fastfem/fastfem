@@ -607,7 +607,9 @@ class Field:
         object.__setattr__(
             self,
             "coefficients",
-            np_or_jnp(use_jax).broadcast_to(coefficients, shapes[0] + shapes[1] + shapes[2]),
+            np_or_jnp(use_jax).broadcast_to(
+                coefficients, shapes[0] + shapes[1] + shapes[2]
+            ),
         )
         object.__setattr__(self, "basis_shape", basis_shape)
         object.__setattr__(self, "point_shape", point_shape)
@@ -725,6 +727,7 @@ class Field:
 
     def __rmul__(self, other: Union["Field", float]):
         return self.__mul__(other)
+
     def __neg__(self):
         return Field(
             self.basis_shape,
@@ -1037,6 +1040,6 @@ class Field:
         if not Field.are_broadcastable(self, other):
             return False
 
-        return np_or_jnp(self,other).array_equiv(
+        return np_or_jnp(self, other).array_equiv(
             *(f.coefficients for f in Field.broadcast_fields_full(self, other))
         )

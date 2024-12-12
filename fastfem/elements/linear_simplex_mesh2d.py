@@ -88,7 +88,7 @@ class LinearSimplexMesh2D(StaticElement2D):
         Returns:
             Field: The field in the mesh basis.
         """
-        return assemble_field_add(field,self.element_node_indices,self.basis_shape())
+        return assemble_field_add(field, self.element_node_indices, self.basis_shape())
 
     @typing.override
     def basis_shape(self) -> tuple[int, ...]:
@@ -102,7 +102,9 @@ class LinearSimplexMesh2D(StaticElement2D):
     def _integrate_field(self, field: Field, jacobian_scale: Field) -> Field:
         return fnp.sum(
             atom._integrate_field(
-                self.position_field_atomstack.stack[:,*(np.newaxis for _ in field.stack_shape)],
+                self.position_field_atomstack.stack[
+                    :, *(np.newaxis for _ in field.stack_shape)
+                ],
                 self.to_atomstack(field),
                 self.to_atomstack(jacobian_scale),
             ),
@@ -117,7 +119,9 @@ class LinearSimplexMesh2D(StaticElement2D):
             raise NotImplementedError("Index assembly not yet implemented")
         return self.from_atomstack_accumulate(
             atom._integrate_basis_times_field(
-                self.position_field_atomstack.stack[:,*(np.newaxis for _ in field.stack_shape)],
+                self.position_field_atomstack.stack[
+                    :, *(np.newaxis for _ in field.stack_shape)
+                ],
                 self.to_atomstack(field),
                 indices=None,
                 jacobian_scale=self.to_atomstack(jacobian_scale),
@@ -132,7 +136,9 @@ class LinearSimplexMesh2D(StaticElement2D):
             raise NotImplementedError("Index assembly not yet implemented")
         return self.from_atomstack_accumulate(
             atom._integrate_grad_basis_dot_field(
-                self.position_field_atomstack.stack[:,*(np.newaxis for _ in field.stack_shape)],
+                self.position_field_atomstack.stack[
+                    :, *(np.newaxis for _ in field.stack_shape)
+                ],
                 self.to_atomstack(field),
                 indices=None,
                 jacobian_scale=self.to_atomstack(jacobian_scale),
@@ -147,7 +153,9 @@ class LinearSimplexMesh2D(StaticElement2D):
             raise NotImplementedError("Index assembly not yet implemented")
         return self.from_atomstack_accumulate(
             atom._integrate_grad_basis_dot_grad_field(
-                self.position_field_atomstack.stack[:,*(np.newaxis for _ in field.stack_shape)],
+                self.position_field_atomstack.stack[
+                    :, *(np.newaxis for _ in field.stack_shape)
+                ],
                 self.to_atomstack(field),
                 indices=None,
                 jacobian_scale=self.to_atomstack(jacobian_scale),

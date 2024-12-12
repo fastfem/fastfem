@@ -107,7 +107,7 @@ class IsoparametricElement(abc.ABC):
             Field: An object corresponding to the given field.
         """
         basis_shape = self.basis_shape()
-        if not isinstance(field,np.ndarray):
+        if not isinstance(field, np.ndarray):
             field = np.array(field)
         return FieldType(
             basis_shape,
