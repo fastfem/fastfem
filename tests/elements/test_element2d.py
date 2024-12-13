@@ -256,7 +256,6 @@ def test_integrate_grad_basis_dot_grad_field(elem: str, affine_transforms):
         )
 
 
-
 def test_mass_matrix(element, affine_transforms):
     basis_field = element.basis_fields()
     basis_shape = element.basis_shape()

@@ -480,7 +480,7 @@ class Field:
             return cshape[a:b]
 
         def cshape_slice_negatives(a, b):
-            return cshape[a : (b if b != 0 else None)] if a != 0 else tuple()
+            return cshape[a : (b if b != 0 else None)] if a != 0 else ()
 
         if shape_order[ShapeComponent.BASIS] == 0:
             if not _is_broadcastable(
@@ -904,7 +904,9 @@ class Field:
     ) -> tuple["Field", ...]: ...
     @staticmethod
     def broadcast_fields_full(
-        *fields: "Field", strict_basis=True, shapes_only: bool = False  # NOQA: ARG004
+        *fields: "Field",
+        strict_basis=True,
+        shapes_only: bool = False,  # NOQA: ARG004
     ) -> tuple["Field", ...] | tuple[tuple[int, ...], tuple[int, ...], tuple[int, ...]]:
         """Two fields a and b are (fully) broadcastable if they are compatible and have
         broadcastable point shape. Since this relation is associative,

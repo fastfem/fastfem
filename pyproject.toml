@@ -68,11 +68,12 @@ path = ".venv"
 # Format all the code with `black`:
 format = "ruff check --fix && black fastfem tests" # hatch run format
 # Lint the code with `ruff`:
-lint = "ruff check fastfem && ruff check tests" # hatch run lint
+lint = "ruff check fastfem" # hatch run lint
+# lint = "ruff check fastfem tests" # hatch run lint
 # Check types with `pyright`:
-check-types = "pyright fastfem tests" # hatch run check-types
+check-types = "pyright fastfem" # hatch run check-types
 # Run the pre-commit hooks:
-precommit = "pre-commit run --all-files" # hatch run pre-commit
+precommit = "pre-commit run --files fastfem/**" # hatch run pre-commit
 # Run the tests:
 test = "pytest" # hatch run tests
 # Run the tests and generate the coverage report as HTML:
@@ -109,36 +110,37 @@ line-length = 88
 docstring-code-format = true
 
 [tool.ruff.lint]
-# extend-select = [
-#     "B",   # flake8-bugbear
-#     "I",   # isort
-#     "ARG", # flake8-unused-arguments
-#     "C4",  # flake8-comprehensions
-#     "EM",  # flake8-errmsg
-#     "ICN", # flake8-import-conventions
-#     "ISC", # flake8-implicit-str-concat
-#     "G",   # flake8-logging-format
-#     "PGH", # pygrep-hooks
-#     "PIE", # flake8-pie
-#     "PL",  # pylint
-#     "PT",  # flake8-pytest-style
-#     "PTH", # flake8-use-pathlib
-#     "RET", # flake8-return
-#     "RUF", # Ruff-specific
-#     "SIM", # flake8-simplify
-#     "T20", # flake8-print
-#     "UP",  # pyupgrade
-#     "YTT", # flake8-2020
-#     "EXE", # flake8-executable
-#     "NPY", # NumPy specific rules
-#     "PD",  # pandas-vet
-# ]
-# ignore = [
-#     "PLR",    # Design related pylint codes
-#     "ISC001", # Conflicts with formatter
-#     "UP007",  # Allow `Optional` type
-#     "PGH003", # Allow type: ignore comments
-# ]
+extend-select = [
+    "B",   # flake8-bugbear
+    "I",   # isort
+    "ARG", # flake8-unused-arguments
+    "C4",  # flake8-comprehensions
+    "EM",  # flake8-errmsg
+    "ICN", # flake8-import-conventions
+    "ISC", # flake8-implicit-str-concat
+    "G",   # flake8-logging-format
+    "PGH", # pygrep-hooks
+    "PIE", # flake8-pie
+    "PL",  # pylint
+    "PT",  # flake8-pytest-style
+    "PTH", # flake8-use-pathlib
+    "RET", # flake8-return
+    "RUF", # Ruff-specific
+    "SIM", # flake8-simplify
+    "T20", # flake8-print
+    "UP",  # pyupgrade
+    "YTT", # flake8-2020
+    "EXE", # flake8-executable
+    "NPY", # NumPy specific rules
+    "PD",  # pandas-vet
+]
+ignore = [
+    "PLR",    # Design related pylint codes
+    "ISC001", # Conflicts with formatter
+    "UP007",  # Allow `Optional` type
+    "PGH003", # Allow type: ignore comments
+    "C417",   # Causes errors
+]
 flake8-unused-arguments.ignore-variadic-names = true
 
 [tool.black]

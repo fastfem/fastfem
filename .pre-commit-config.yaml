@@ -12,3 +12,7 @@ repos:
         args: ["--fix", "--show-fixes"]
       - id: ruff-format
     types: [python, yaml, markdown, toml]
+  - repo: https://github.com/RobertCraigie/pyright-python
+    rev: v1.1.390
+    hooks:
+      - id: pyright
