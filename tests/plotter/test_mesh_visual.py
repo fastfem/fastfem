@@ -117,7 +117,6 @@ def test_plot_data(
         data=dummy_data[0],
     )
 
-
 def test_animate_data(
     monkeypatch: pytest.MonkeyPatch,
     mesh: m.Mesh,
@@ -134,16 +133,15 @@ def test_animate_data(
     visualizer = p.VisualMesh(mesh)
     monkeypatch.setattr(pv.Plotter, "show", MagicMock())
     visualizer.animate_data(
-        FPS,
-        TOTAL_TIME,
-        dummy_data,
+        fps=FPS,
+        total_time=TOTAL_TIME,
+        data=dummy_data,
     )
     with pytest.raises(ValueError):
         visualizer.animate_data(
             fps=np.random.uniform(25.1, 100),
             total_time=TOTAL_TIME,
             data=dummy_data,
-            cmap="invalid_cmap",
         )
 
 
