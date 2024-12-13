@@ -134,7 +134,7 @@ class VisualMesh:
             data: The temperature data for each node, contained in a 3D array.
             cmap: Colormap for the data.
         """
-        if fps > 25 and force == False:
+        if fps > 25 and not force:
             raise ValueError(
                 "The maximum value for fps is 25. Please decrease your fps value."
             )
