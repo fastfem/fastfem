@@ -9,7 +9,8 @@ repos:
     hooks:
       # Ruff's settings are configured in the pyproject.toml file
       - id: ruff
-        args: ["--fix", "--show-fixes", "fastfem"]
+        args: ["--fix", "--show-fixes"]
+        files: ^fastfem/
       - id: ruff-format
         args: ["fastfem"]
     types: [python, yaml, markdown, toml]
