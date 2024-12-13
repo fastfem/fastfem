@@ -906,7 +906,7 @@ class Field:
     def broadcast_fields_full(
         *fields: "Field",
         strict_basis=True,
-        shapes_only: bool = False,  # NOQA: ARG004
+        shapes_only: bool = False,
     ) -> tuple["Field", ...] | tuple[tuple[int, ...], tuple[int, ...], tuple[int, ...]]:
         """Two fields a and b are (fully) broadcastable if they are compatible and have
         broadcastable point shape. Since this relation is associative,
