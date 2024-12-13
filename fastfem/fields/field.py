@@ -905,7 +905,7 @@ class Field:
     @staticmethod
     def broadcast_fields_full(
         *fields: "Field",
-        strict_basis=True,
+        strict_basis=True,  # NOQA: ARG004
         shapes_only: bool = False,
     ) -> tuple["Field", ...] | tuple[tuple[int, ...], tuple[int, ...], tuple[int, ...]]:
         """Two fields a and b are (fully) broadcastable if they are compatible and have
