@@ -101,14 +101,14 @@ class VisualMesh:
         plotter = pv.Plotter()
 
         # Assign temperature data to the grid
-        grid.point_data["Temperature"] = data.flatten("F")
+        grid.point_data["Data"] = data.flatten()
         plotter.add_mesh(
             mesh=grid,
-            scalars="Temperature",
+            scalars="Data",
             cmap=cmap,
             scalar_bar_args={
                 "vertical": False,
-                "title": "Temperature",
+                "title": "Data",
                 "title_font_size": 25,
                 "label_font_size": 10,
             },
@@ -117,7 +117,12 @@ class VisualMesh:
         plotter.show()
 
     def animate_data(
-        self, fps: float, total_time: float, data: np.ndarray, cmap: str = "viridis"
+        self,
+        fps: float,
+        total_time: float,
+        data: np.ndarray,
+        force: bool = False,
+        cmap: str = "viridis",
     ) -> None:
         """
         Plots the mesh with temperature data, for successive time steps.
@@ -128,7 +133,7 @@ class VisualMesh:
             data: The temperature data for each node, contained in a 3D array.
             cmap: Colormap for the data.
         """
-        if fps > 25:
+        if fps > 25 & force == False:
             raise ValueError(
                 "The maximum value for fps is 25. Please decrease your fps value."
             )
@@ -141,13 +146,13 @@ class VisualMesh:
         frames = int(total_time * fps)
 
         # Assign temperature data to the grid
-        grid.point_data["Temperature"] = data[0].flatten("F")
+        grid.point_data["Data"] = data[0].flatten()
         plotter.add_mesh(
             mesh=grid,
             color="red",
             render_points_as_spheres=True,
             point_size=10,
-            scalars="Temperature",
+            scalars="Data",
             cmap=cmap,
             scalar_bar_args=dict(
                 title_font_size=20,
@@ -171,7 +176,7 @@ class VisualMesh:
             start_time = time.time()
 
             # Update the data
-            grid.point_data["Temperature"] = data[i].flatten("F")
+            grid.point_data["Data"] = data[i].flatten()
             plotter.render()
 
             # Update time text
@@ -213,8 +218,8 @@ class VisualMesh:
         frames = int(total_time * fps)
 
         # Assign initial temperature data
-        grid.point_data["Temperature"] = data[0].flatten("F")
-        plotter.add_mesh(grid, scalars="Temperature", cmap=cmap)
+        grid.point_data["Data"] = data[0].flatten("F")
+        plotter.add_mesh(grid, scalars="Data", cmap=cmap)
         plotter.camera_position = "xy"
 
         # Creating file
@@ -227,7 +232,7 @@ class VisualMesh:
         # Animate and record frames
         for i in range(1, frames):
             # Update the data
-            grid.point_data["Temperature"] = data[i].flatten("F")
+            grid.point_data["Data"] = data[i].flatten("F")
             plotter.render()
 
             # Update time text
@@ -266,8 +271,8 @@ class VisualMesh:
         frames = int(total_time * fps)
 
         # Assign initial temperature data
-        grid.point_data["Temperature"] = data[0].flatten("F")
-        plotter.add_mesh(grid, scalars="Temperature", cmap=cmap)
+        grid.point_data["Data"] = data[0].flatten("F")
+        plotter.add_mesh(grid, scalars="Data", cmap=cmap)
         plotter.camera_position = "xy"
 
         # Creating file
@@ -278,7 +283,7 @@ class VisualMesh:
 
         for i in range(1, frames):
             # Update the data
-            grid.point_data["Temperature"] = data[i].flatten("F")
+            grid.point_data["Data"] = data[i].flatten("F")
             plotter.render()
 
             # Update time text

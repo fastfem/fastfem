@@ -1,6 +1,7 @@
 import fastfem.mesh as ffm
 import fastfem.elements as elems
 from fastfem.fields import numpy_similes as fnp, ShapeComponent
+import fastfem.plotter as fplt
 import numpy as np
 
 
@@ -49,10 +50,8 @@ tmax = 3  # sim end time
 
 # ========[    Initialize Plot     ]========
 
-tri = mpltri.Triangulation(X, Y)
-plt.ion()
-plt.figure(0)
-plt.show(block=False)
+visualizer = fplt.VisualMesh(m)
+visualizer.plot_mesh()
 
 
 # ========[       Time Loop       ]========
@@ -76,17 +75,21 @@ def solve_accel(wavefield):
 
 
 Uddot = solve_accel(U)
-while t < tmax:
+n_steps = int(tmax / dt)
+U_array = np.zeros((n_steps, U.coefficients.size))
+for i in range(n_steps):
     # use Newmark-beta
     U += dt * Udot + (0.5 * dt**2) * Uddot
+    U_array[i] = U.coefficients
     Udot += 0.5 * dt * Uddot
     Uddot = solve_accel(U)
     Udot += 0.5 * dt * Uddot
     t += dt
 
-    # plot
-    plt.cla()
-    plt.title(f"t = {t:.4f}")
-    plt.tricontourf(tri, U.coefficients, 100, vmin=-0.25, vmax=0.25)
-    plt.draw()
-    plt.pause(0.001)
+# ========[       Plotting       ]========
+
+# plotting for a random index
+visualizer.plot_data(U_array[150])
+
+# animating
+visualizer.animate_data(1 / dt, tmax, U_array, force=True)
