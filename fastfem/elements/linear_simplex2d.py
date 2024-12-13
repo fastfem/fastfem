@@ -17,8 +17,8 @@ class LinearSimplex2D(Element2D):
         return Field((3,), (2,), np.array([[0, 0], [1, 0], [0, 1]]))
 
     def _interpolate_field(self, field, X, Y):
-        X = Field(X.shape, tuple(), X)
-        Y = Field(Y.shape, tuple(), Y)
+        X = Field(X.shape, (), X)
+        Y = Field(Y.shape, (), Y)
         return (
             field.basis[0, ...] * (1.0 - X - Y)
             + field.basis[1, ...] * X
@@ -27,13 +27,16 @@ class LinearSimplex2D(Element2D):
 
     def _compute_field_gradient(self, field, pos_field=None):
         if (
-            field.basis_shape == tuple()
+            field.basis_shape == ()
             or len(field.coefficients.shape) == 0
             or field.coefficients.shape[0] == 1
         ):  # we have a constant function.
             return Field(
-                tuple(),
-                field.point_shape + (2,),
+                (),
+                (
+                    *field.point_shape,
+                    2,
+                ),
                 np.zeros(field.stack_shape + field.point_shape + (1,)),
             )
 
@@ -120,5 +123,4 @@ class LinearSimplex2D(Element2D):
         )
         if indices is None:
             return integ
-        else:
-            return integ.basis[*indices]
+        return integ.basis[*indices]

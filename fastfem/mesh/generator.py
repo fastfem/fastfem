@@ -9,21 +9,21 @@ already exists.
 import copy
 import dataclasses
 import pathlib
-from typing import Literal, Optional
+from typing import ClassVar, Literal, Optional
 
 import gmsh
 import numpy as np
 
 __all__ = [
-    "ZeroDElementType",
-    "OneDElementType",
-    "TwoDElementType",
-    "Mesh",
-    "Submesh",
     "Domain",
-    "Point",
     "Line",
+    "Mesh",
+    "OneDElementType",
+    "Point",
+    "Submesh",
     "Surface",
+    "TwoDElementType",
+    "ZeroDElementType",
     "mesh",
 ]
 
@@ -116,7 +116,8 @@ class Mesh:
             if domain.name == key:
                 return domain
 
-        raise KeyError(f"Domain with the name {key} does not exist.")
+        message = f"Domain with the name {key} does not exist."
+        raise KeyError(message)
 
     def __contains__(self, key: str) -> bool:
         """Check if the mesh has a domain with the given name.
@@ -152,21 +153,21 @@ class Geometry:
 
     _instance = None
 
-    _points: list["Point"] = []
-    _lines: list["Line"] = []
-    _surfaces: list["Surface"] = []
+    _points: ClassVar[list["Point"]] = []
+    _lines: ClassVar[list["Line"]] = []
+    _surfaces: ClassVar[list["Surface"]] = []
 
-    _domains: dict[tuple[str, int], int] = {}  # {(domain_name, dim): tag}
+    _domains: ClassVar[dict[tuple[str, int], int]] = {}  # {(domain_name, dim): tag}
 
     _points_coordinates: np.ndarray = np.empty((0, 3), dtype=np.float64)
     _line_point_tags: np.ndarray = np.empty((0, 2), dtype=np.int64)
-    _surface_line_tags: list[np.ndarray] = []
+    _surface_line_tags: ClassVar[list[np.ndarray]] = []
 
     def __new__(cls):
         """If an instance of the class already exists, return it. Otherwise, create a
         new instance and return it. This is the Singleton design pattern."""
         if cls._instance is None:
-            cls._instance = super(Geometry, cls).__new__(cls)
+            cls._instance = super().__new__(cls)
         return cls._instance
 
     @classmethod
@@ -217,6 +218,8 @@ class Geometry:
             where_true = np.where(comparison)[0][0]
             return entities[where_true]
 
+        return None
+
     @classmethod
     def _add(
         cls, entity: "Point | Line | Surface"
@@ -254,6 +257,8 @@ class Geometry:
                 )
             )
             cls._surfaces.append(entity)
+
+        return None
 
     @classmethod
     def _add_point(cls, point: "Point") -> "Point":
@@ -321,19 +326,20 @@ class Geometry:
                         domains[entity.domain_name] = {dim: []}
                     try:
                         domains[entity.domain_name][dim].append(entity.tag)
-                    except KeyError:
-                        raise ValueError(
+                    except KeyError as e:
+                        message = (
                             "The same domain name cannot be used for entities of"
                             " different dimensions (a point and a line cannot have the"
                             " same domain name, for example)."
                         )
+                        raise ValueError(message) from e
 
         find_their_domains(cls._points, 0)
         find_their_domains(cls._lines, 1)
         find_their_domains(cls._surfaces, 2)
 
         for domain_name, domain_entities in domains.items():
-            dim = list(domain_entities.keys())[0]
+            dim = next(iter(domain_entities.keys()))
             tags = domain_entities[dim]
             domain_tag = gmsh.model.add_physical_group(dim, tags, name=domain_name)
             cls._domains[domain_name, dim] = domain_tag
@@ -391,7 +397,9 @@ class Geometry:
             meshes: list[Submesh] = []
             nodes: dict[int, np.ndarray] = {
                 int(tag): coordinates
-                for tag, coordinates in zip(tags_of_nodes, coordinates_of_nodes)
+                for tag, coordinates in zip(
+                    tags_of_nodes, coordinates_of_nodes, strict=False
+                )
             }
             for element_type, elements_and_nodes in types_and_elements.items():
                 elements: dict[int, np.ndarray] = {
@@ -399,6 +407,7 @@ class Geometry:
                     for tag, tags_of_nodes in zip(
                         elements_and_nodes["element_tags"],
                         elements_and_nodes["nodes_of_elements"],
+                        strict=False,
                     )
                 }
                 meshes.append(
@@ -531,16 +540,18 @@ class Surface:
         # Make sure all the lines are transfinite if the surface is transfinite
         if self.transfinite:
             lines_are_all_transfinite = all(
-                [line.transfinite for line in self.outer_lines]
+                line.transfinite for line in self.outer_lines
             )
             if not lines_are_all_transfinite:
-                raise ValueError(
+                message = (
                     "If you would like to create a transfinite surface, all the lines'"
                     " number_of_nodes argument must be provided."
                 )
+                raise ValueError(message)
 
             if len(self.outer_lines) not in [3, 4]:
-                raise ValueError("All the transfinite surfaces must have 3 or 4 lines.")
+                message = "All the transfinite surfaces must have 3 or 4 lines."
+                raise ValueError(message)
 
         # Make sure the points of lines are connected (each line's end point is the
         # start point of the next line) and lines are in clockwise order:
@@ -556,17 +567,19 @@ class Surface:
                     ordered_lines.append(-line)
                     current_point_tag = line.points[1].tag
                 else:
-                    raise ValueError(
+                    message = (
                         "Lines are not properly connected. Make sure the lines are"
                         " ordered."
                     )
+                    raise ValueError(message)
 
             return ordered_lines
 
         ordered_outer_lines = order_lines(self.outer_lines)
         # Check if the loop is closed:
         if ordered_outer_lines[0].points[0] != ordered_outer_lines[-1].points[1]:
-            raise ValueError("Lines do not form a closed loop.")
+            message = "Lines do not form a closed loop."
+            raise ValueError(message)
 
         self.outer_lines = ordered_outer_lines
 
@@ -574,7 +587,8 @@ class Surface:
             ordered_inner_lines = order_lines(self.inner_lines)
             # Check if the loop is closed:
             if ordered_inner_lines[0].points[0] != ordered_inner_lines[-1].points[1]:
-                raise ValueError("Inner lines do not form a closed loop.")
+                message = "Inner lines do not form a closed loop."
+                raise ValueError(message)
 
             self.inner_lines = ordered_inner_lines
 
@@ -583,12 +597,13 @@ class Surface:
             # This surface already exists, send the old surface instead of creating a
             # new one
             if self.inner_lines != surface.inner_lines:
-                raise ValueError(
+                message = (
                     "There already exists a surface with the same outer lines but"
                     " different inner lines. We cannot create both of them as it will"
                     " cause duplication. Also, we cannot remove the old one since they"
                     " are not the same."
                 )
+                raise ValueError(message)
             self.__dict__.update(surface.__dict__)
         else:
             curve_loop_tags = []

@@ -1,9 +1,10 @@
+import numpy as np
 import pytest
+
+import fastfem.mesh as ffm
 from fastfem.elements.linear_simplex2d import LinearSimplex2D
 from fastfem.elements.linear_simplex_mesh2d import LinearSimplexMesh2D
 from fastfem.fields.field import Field
-import fastfem.mesh as ffm
-import numpy as np
 
 meshes = {
     "rect1": ffm.create_a_rectangle_mesh(

@@ -75,7 +75,7 @@ def test_field_construction():
                     point_shape,
                     coefs,
                 )  # this will work
-                if not f.shape == (stack_shape, basis_shape, point_shape):
+                if f.shape != (stack_shape, basis_shape, point_shape):
                     f = field.Field(
                         basis_shape,
                         point_shape,

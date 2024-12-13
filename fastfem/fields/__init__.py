@@ -9,15 +9,15 @@ from .field import (
 from .numpy_similes import abs, einsum, moveaxis, reshape, sum
 
 __all__ = [
-    "ShapeComponent",
-    "FieldAxisIndex",
-    "FieldShapeError",
-    "FieldConstructionError",
     "Field",
-    "moveaxis",
-    "sum",
-    "reshape",
+    "FieldAxisIndex",
+    "FieldConstructionError",
+    "FieldShapeError",
+    "ShapeComponent",
+    "abs",
     "einsum",
     "linalg",
-    "abs",
+    "moveaxis",
+    "reshape",
+    "sum",
 ]

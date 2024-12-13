@@ -6,7 +6,6 @@ from numpy.typing import ArrayLike
 
 from fastfem.fields.field import Field as FieldType
 
-
 WARNINGS_ENABLED = False
 
 
@@ -19,11 +18,11 @@ def _set_warnings_enabled(enable_warnings: bool):
     Args:
         enable_warnings (bool): True to enable warnings. False to disable.
     """
-    global WARNINGS_ENABLED
+    global WARNINGS_ENABLED  # NOQA: PLW0603
     WARNINGS_ENABLED = enable_warnings
 
 
-class ElementBase(abc.ABC):
+class ElementBase(abc.ABC):  # NOQA: B024
     """
     Template to handle management of element operations.
     Element classes define operations to compute integrals on them.
@@ -55,7 +54,7 @@ class ElementBase(abc.ABC):
             _type_: _description_
         """
         if WARNINGS_ENABLED:
-            warnings.warn(f"Element developer message: {message}")
+            warnings.warn(f"Element developer message: {message}", stacklevel=3)
 
 
 class IsoparametricElement(abc.ABC):
@@ -83,7 +82,7 @@ class IsoparametricElement(abc.ABC):
 
     # this emulates a member class definition
     def Field(
-        self, field: ArrayLike, is_const: bool, point_shape: tuple[int, ...] = tuple()
+        self, field: ArrayLike, is_const: bool, point_shape: tuple[int, ...] = ()
     ) -> FieldType:
         """Converts a `numpy` array to a `Field` object that can be used by this
         element class.
@@ -135,14 +134,14 @@ class IsoparametricElement(abc.ABC):
         basis_size = np.prod(basis_shape, dtype=int)
         enumeration = np.unravel_index(np.arange(basis_size), basis_shape)
         field[*enumeration, *enumeration] = 1
-        return FieldType(basis_shape, tuple(), field)
+        return FieldType(basis_shape, (), field)
 
     def _verify_field_compatibilities(
         self, *fields: FieldType, **named_fields: FieldType
     ):
-        compare_field = FieldType(self.basis_shape(), tuple(), 0)
+        compare_field = FieldType(self.basis_shape(), (), 0)
         if not FieldType.are_compatible(compare_field, *fields, *named_fields.values()):
             shapestrs = [str(f.shape) for f in fields] + [
-                f"{name}: {str(f.shape)}" for name, f in named_fields.items()
+                f"{name}: {f.shape!s}" for name, f in named_fields.items()
             ]
             raise ValueError("Incompatible shapes: " + ", ".join(shapestrs))

@@ -16,33 +16,35 @@ atom = LinearSimplex2D()
 
 class LinearSimplexMesh2D(StaticElement2D):
     def __init__(self, mesh: Mesh):
-        nodes = dict()
-        elems = list()
+        nodes = {}
+        elems = []
         # gather all nodes and elements in the above structures
         for component in mesh:
             if component.dimension == 2:
                 for submesh in component.mesh:
                     if submesh.number_of_nodes_per_element != 3:
-                        raise ValueError(
+                        message = (
                             "LinearSimplexMesh2D operates on triangles!"
                             f" '{component.name}' has"
                             f" {submesh.number_of_nodes_per_element} nodes per element."
                         )
+                        raise ValueError(message)
                     nodes.update(submesh.nodes)
                     elems.extend(submesh.elements.values())
         self.mesh = mesh
         self.num_nodes = len(nodes)
         self.num_elements = len(elems)
-        node_index_to_basis_index = dict()
+        node_index_to_basis_index = {}
         self.node_coords = np.empty((self.num_nodes, 2), dtype=float)
         self.element_node_indices = np.empty((self.num_elements, 3), dtype=int)
         # populate node coords, and obtain the node-index -> basis-index mapping
         for i, v in enumerate(nodes.items()):
             if abs(v[1][2]) > 1e-15:
-                raise ValueError(
+                message = (
                     f"Node {i} must have a z-component of zero. Found"
                     f" {v[1][2]} instead."
                 )
+                raise ValueError(message)
             node_index_to_basis_index[v[0]] = i
             self.node_coords[i, :] = v[1][:2]
 
@@ -116,7 +118,8 @@ class LinearSimplexMesh2D(StaticElement2D):
         self, field: Field, indices: colltypes.Sequence | None, jacobian_scale: Field
     ) -> Field:
         if indices is not None:
-            raise NotImplementedError("Index assembly not yet implemented")
+            message = "Index assembly not yet implemented"
+            raise NotImplementedError(message)
         return self.from_atomstack_accumulate(
             atom._integrate_basis_times_field(
                 self.position_field_atomstack.stack[
@@ -133,7 +136,8 @@ class LinearSimplexMesh2D(StaticElement2D):
         self, field: Field, indices: colltypes.Sequence | None, jacobian_scale: Field
     ) -> Field:
         if indices is not None:
-            raise NotImplementedError("Index assembly not yet implemented")
+            message = "Index assembly not yet implemented"
+            raise NotImplementedError(message)
         return self.from_atomstack_accumulate(
             atom._integrate_grad_basis_dot_field(
                 self.position_field_atomstack.stack[
@@ -150,7 +154,8 @@ class LinearSimplexMesh2D(StaticElement2D):
         self, field: Field, indices: colltypes.Sequence | None, jacobian_scale: Field
     ) -> Field:
         if indices is not None:
-            raise NotImplementedError("Index assembly not yet implemented")
+            message = "Index assembly not yet implemented"
+            raise NotImplementedError(message)
         return self.from_atomstack_accumulate(
             atom._integrate_grad_basis_dot_grad_field(
                 self.position_field_atomstack.stack[
@@ -174,7 +179,3 @@ if __name__ == "__main__":
             file_name=None,
         )
     )
-    print(elem.num_nodes)
-    print(elem.num_elements)
-    print(elem.basis_shape())
-    print(elem.integrate_field(Field(tuple(), tuple(), 1)))
