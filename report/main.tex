@@ -115,7 +115,7 @@ Currently, \texttt{FastFEM v0.0.1} can
 
 In this report, the theory behind FEM is summarized. The features and capabilities of \texttt{FastFEM v0.0.1} are presented. Some example results are shown. Finally, the conclusion and outlook are discussed.
 
-\section{Theory}
+\section{Theory} \label{sec:theory}
 \input{theory}
 
 \section{Features and Capabilities}
@@ -156,6 +156,10 @@ This section summarizes \texttt{FastFEM v0.0.1}'s features and capabilities: mes
 \end{itemize}
 
 \section{Conclusion and Outlook}
+
+In conclusion, the current version of \texttt{FastFem} is capable of discretizing any PDE into a system of linear equations using the mathematical formalism shown in sections \ref{sec:theory} and \ref{sec:elem_field}, and therefore provide an approximate solution to the PDE given a finite time step, which may be chosen freely by the user at their convenience (and their relative need for accuracy). Coupled with such calculations, \texttt{FastFem} also provides a mesh generator using \texttt{Gmsh} specified by the domain of the PDE as well as the number of elements required by the user (to be used in conjuction with the elements portion of the code), in addition to a plotter which uses \texttt{PyVista} to visualize all results in a 2D space, on the corresponding mesh.
+
+Currently, the full capabilities of \texttt{FastFem} are limited to 2D PDEs discretized using triangular elements, which may or may not include time dependency. In the future, we aim to extend \texttt{FastFem} to be fully compatible with 3D PDEs and quadrangle elements, as well as introduce the ability to introduce more complex boundary conditions defined by the user. In addition, current plotting methods should enable the user to export their results as a .mp4 or .gif files, but relies on external dependecies that are not necessarily pip-installable, and may therefore not be able to be used by all. In future versions, we aim to make this infrastructure more robust.
 
 \clearpage
 \printbibliography
