@@ -61,9 +61,9 @@ class AffineTransformHandler:
     ) -> Callable[[NDArray], NDArray]:
         if target_type == "point":
             return T
-        elif target_type == "vector":
+        if target_type == "vector":
             return lambda x: T(x) - T(np.zeros(2))
-        elif target_type == "form":
+        if target_type == "form":
             shift = T(np.zeros(2))
             A_Tinv = np.linalg.inv(T(np.eye(2)) - shift).T
             return lambda x: (A_Tinv @ np.expand_dims(x, -1)).squeeze(-1)

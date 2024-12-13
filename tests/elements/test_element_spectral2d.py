@@ -1,4 +1,4 @@
-from typing import Callable
+from collections.abc import Callable
 
 import numpy as np
 import pytest
@@ -115,7 +115,7 @@ def test_lagrange_poly_coefs1D(element):
     # we will use central finite difference which has O(h^2) error
     h = 10 ** -((sigfigs + 3) // 2)
 
-    for deriv_order in range(0, elem.degree + 1):
+    for deriv_order in range(elem.degree + 1):
         # verify that the lagrange derivatives are being set in the dictionary.
         P = elem.lagrange_poly1D(deriv_order)
         np.testing.assert_almost_equal(
@@ -167,7 +167,7 @@ def test_lagrange_poly_coefs1D(element):
 def test_lagrange_evals1D(element, broadcastable_shapes):
     elem = element
 
-    for deriv_order in range(0, elem.degree + 1):
+    for deriv_order in range(elem.degree + 1):
         # verify that the lagrange derivatives are evaluated correctly
         P = elem.lagrange_poly1D(deriv_order)
 

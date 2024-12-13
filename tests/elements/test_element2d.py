@@ -255,7 +255,6 @@ def test_integrate_grad_basis_dot_grad_field(elem: str, affine_transforms):
             atol=1e-8,
         )
 
-    pass
 
 
 def test_mass_matrix(element, affine_transforms):

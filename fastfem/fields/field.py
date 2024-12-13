@@ -7,7 +7,7 @@ from types import ModuleType
 from typing import Literal, Union
 
 import jax
-import numpy as _np
+import numpy as _np  # noqa: ICN001
 from numpy.typing import ArrayLike, NDArray
 
 jnp = _np  # this line is just to make type hinting not complain about np()
@@ -22,10 +22,9 @@ def np_or_jnp(*use_jax) -> ModuleType:
     if any((entry.use_jax if isinstance(entry, Field) else entry) for entry in use_jax):
         if HAS_JAX:
             return jnp
-        else:
-            raise ValueError("JAX was not found, but was requested!")
-    else:
-        return _np
+        message = "JAX was not found, but was requested!"
+        raise ValueError(message)
+    return _np
 
 
 np = _np
@@ -103,8 +102,7 @@ class FieldAxisIndex:
     def __getitem__(self, ind):
         if ind == 0:
             return self.component
-        else:
-            return self.index
+        return self.index
 
 
 FieldAxisIndexType = tuple[ShapeComponent, int] | FieldAxisIndex
@@ -112,18 +110,19 @@ FieldAxisIndexType = tuple[ShapeComponent, int] | FieldAxisIndex
 
 def _verify_is_permutation(p: tuple[int, ...]) -> None:
     if not isinstance(p, tuple):
-        raise FieldShapeError("shape_order is not a permutation! (must be a tuple)")
+        message = "shape_order is not a permutation! (must be a tuple)"
+        raise FieldShapeError(message)
     n = len(p)  # size of the permutation
     exists = [False] * n
     for i in p:
         if not isinstance(i, int):
-            raise FieldShapeError(
-                "shape_order is not a permutation! (all entries must be integers)"
-            )
+            message = "shape_order is not a permutation! (all entries must be integers)"
+            raise FieldShapeError(message)
         exists[i] = True
 
     if not all(exists):
-        raise FieldShapeError("shape_order is not a permutation! (must be a bijection)")
+        message = "shape_order is not a permutation! (must be a bijection)"
+        raise FieldShapeError(message)
 
 
 def _invert_permutation(p: tuple[int, ...]) -> tuple[int, ...]:
@@ -165,7 +164,7 @@ def _reshape(
     #     shape = (shape,)
     # start_ind = field._axis_field_to_numpy(FieldAxisIndex(component_selector, 0))
     # end_ind = field._axis_field_to_numpy(FieldAxisIndex(component_selector, -1)) + 1
-    # shapes = [tuple()] * 3
+    # shapes = [()] * 3
     # shapes[ShapeComponent.BASIS] = field.basis_shape
     # shapes[ShapeComponent.POINT] = field.point_shape
     # shapes[ShapeComponent.STACK] = field.stack_shape
@@ -188,11 +187,11 @@ def _reshape(
     start_ind = field._component_offset(component_selector)
     # end of reshaped section (excl)
     end_ind = start_ind + len(shape)
-    shapes = [tuple()] * 3
-    shapes[field.shape_order[ShapeComponent.BASIS]] = field.basis_shape
-    shapes[field.shape_order[ShapeComponent.POINT]] = field.point_shape
-    shapes[field.shape_order[ShapeComponent.STACK]] = field.stack_shape
-    shapes[field.shape_order[component_selector]] = shape
+    shapes = [()] * 3
+    shapes[field.shape_order[ShapeComponent.BASIS]] = field.basis_shape  # type: ignore
+    shapes[field.shape_order[ShapeComponent.POINT]] = field.point_shape  # type: ignore
+    shapes[field.shape_order[ShapeComponent.STACK]] = field.stack_shape  # type: ignore
+    shapes[field.shape_order[component_selector]] = shape  # type: ignore
     np_target_shape = shapes[0] + shapes[1] + shapes[2]
     coefs = np_or_jnp(field.use_jax).reshape(
         field.coefficients, np_target_shape, order=order, copy=copy
@@ -600,7 +599,7 @@ class Field:
                 stack_end -= len(point_shape)
 
         stack_shape = cshape[stack_start:stack_end]
-        shapes: list[tuple[int, ...]] = [tuple()] * 3
+        shapes: list[tuple[int, ...]] = [()] * 3
         shapes[shape_order[ShapeComponent.BASIS]] = basis_shape
         shapes[shape_order[ShapeComponent.STACK]] = stack_shape
         shapes[shape_order[ShapeComponent.POINT]] = point_shape
@@ -634,11 +633,11 @@ class Field:
     def __getattr__(self, name):
         if name == "shape":
             return (self.stack_shape, self.basis_shape, self.point_shape)
-        elif name == "basis":
+        if name == "basis":
             return FieldBasisAccessor(self)
-        elif name == "stack":
+        if name == "stack":
             return FieldStackAccessor(self)
-        elif name == "point":
+        if name == "point":
             return FieldPointAccessor(self)
         raise AttributeError
 
@@ -652,7 +651,7 @@ class Field:
                 shape_order=a.shape_order,
                 use_jax=a.use_jax or b.use_jax,
             )
-        elif isinstance(other, float):
+        if isinstance(other, float):
             return Field(
                 self.basis_shape,
                 self.point_shape,
@@ -675,7 +674,7 @@ class Field:
                 shape_order=a.shape_order,
                 use_jax=a.use_jax or b.use_jax,
             )
-        elif isinstance(other, float):
+        if isinstance(other, float):
             return Field(
                 self.basis_shape,
                 self.point_shape,
@@ -695,7 +694,7 @@ class Field:
                 shape_order=a.shape_order,
                 use_jax=a.use_jax or b.use_jax,
             )
-        elif isinstance(other, float):
+        if isinstance(other, float):
             return Field(
                 self.basis_shape,
                 self.point_shape,
@@ -715,7 +714,7 @@ class Field:
                 shape_order=a.shape_order,
                 use_jax=a.use_jax or b.use_jax,
             )
-        elif isinstance(other, float):
+        if isinstance(other, float):
             return Field(
                 self.basis_shape,
                 self.point_shape,
@@ -822,10 +821,11 @@ class Field:
                 and not _is_broadcastable(point_shape, self.point_shape)
             )
         ):
-            raise FieldShapeError(
+            message = (
                 f"Cannot broadcast field of shape {self.shape} into"
                 f" shape {(stack_shape,basis_shape,point_shape)}"
             )
+            raise FieldShapeError(message)
         slices: list[typing.Any] = [None, None, None]
         shapes: list[typing.Any] = [None, None, None]
         slices[self.shape_order[ShapeComponent.BASIS]] = (
@@ -875,7 +875,7 @@ class Field:
         )
 
     @staticmethod
-    def are_broadcastable(*fields: "Field", strict_basis=True) -> bool:
+    def are_broadcastable(*fields: "Field", strict_basis=True) -> bool:  # NOQA: ARG004
         """Two fields a and b are (fully) broadcastable if they are compatible and have
         broadcastable point shape. Since this relation is associative,
         more than two fields can be passed in.
@@ -904,7 +904,7 @@ class Field:
     ) -> tuple["Field", ...]: ...
     @staticmethod
     def broadcast_fields_full(
-        *fields: "Field", strict_basis=True, shapes_only: bool = False
+        *fields: "Field", strict_basis=True, shapes_only: bool = False  # NOQA: ARG004
     ) -> tuple["Field", ...] | tuple[tuple[int, ...], tuple[int, ...], tuple[int, ...]]:
         """Two fields a and b are (fully) broadcastable if they are compatible and have
         broadcastable point shape. Since this relation is associative,
@@ -932,7 +932,9 @@ class Field:
                 field.broadcast_to_shape(stack_shape, basis_shape, point_shape)
                 for field in fields
             )
-        raise FieldShapeError("Cannot broadcast fields with incompatible shapes.")
+
+        message = "Cannot broadcast fields with incompatible shapes."
+        raise FieldShapeError(message)
 
     @staticmethod
     def are_compatible(*fields: "Field", strict_basis=True) -> bool:
@@ -961,14 +963,13 @@ class Field:
                             or (np.prod(b, dtype=int) == 1)
                             or a[0] == b,  # if nonempty, did shape change?
                         ),
-                        initial=(tuple(), True),
+                        initial=((), True),
                     ),
                 )
             ) and _is_compatible(*(field.stack_shape for field in fields))
-        else:
-            return _is_compatible(
-                *(field.basis_shape for field in fields)
-            ) and _is_compatible(*(field.stack_shape for field in fields))
+        return _is_compatible(
+            *(field.basis_shape for field in fields)
+        ) and _is_compatible(*(field.stack_shape for field in fields))
 
     @staticmethod
     def broadcast_field_compatibility(
@@ -1000,7 +1001,9 @@ class Field:
                 field.broadcast_to_shape(stack_shape, basis_shape, field.point_shape)
                 for field in fields
             )
-        raise FieldShapeError("Cannot broadcast fields with incompatible shapes.")
+
+        message = "Cannot broadcast fields with incompatible shapes."
+        raise FieldShapeError(message)
 
     def _axis_field_to_numpy(
         self, index: FieldAxisIndexType, out_of_bounds_check: bool = True
@@ -1027,12 +1030,14 @@ class Field:
 
         if ind < 0:
             if out_of_bounds_check and ind < -len(shape):
-                raise IndexError(
+                message = (
                     f"Attempting to access axis {ind} ({-1-ind}) of shape {shape}."
                 )
+                raise IndexError(message)
             ind = len(shape) + ind
         elif out_of_bounds_check and ind >= len(shape):
-            raise IndexError(f"Attempting to access axis {ind} of shape {shape}.")
+            message = f"Attempting to access axis {ind} of shape {shape}."
+            raise IndexError(message)
 
         return ind + self._component_offset(comp)
 

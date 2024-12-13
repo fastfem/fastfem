@@ -25,8 +25,8 @@ class DeformationGradient2DBadnessException(Exception):
     def __init__(self, val: float, x: float, y: float):
         super().__init__(
             "Element has too poor of a shape!\n"
-            + f"   def_grad badness = {val:e} at local coordinates"
-            + f"({x:.6f},{y:.6f})"
+            f"   def_grad badness = {val:e} at local coordinates"
+            f"({x:.6f},{y:.6f})"
         )
 
         self.x = x
@@ -103,10 +103,10 @@ class SpectralElement2D(element.Element2D):
 
         self.knots, self.weights, self._lagrange_polys = _build_GLL(degree)
         # store derivatives of L_i as needed, so they need only be computed once
-        self._lagrange_derivs = dict()
+        self._lagrange_derivs = {}
         self._lagrange_derivs[0] = self._lagrange_polys
 
-        self._lagrange_at_knots = dict()
+        self._lagrange_at_knots = {}
 
     @typing.override
     def basis_shape(self) -> tuple[int, ...]:
@@ -151,7 +151,7 @@ class SpectralElement2D(element.Element2D):
 
         # inefficient partial partition calc, but only done once, so...
         coefs = self._lagrange_polys
-        for i in range(deriv_order):
+        for _ in range(deriv_order):
             coefs = coefs[:, 1:] * np.arange(1, coefs.shape[1])
 
         self._lagrange_derivs[deriv_order] = coefs
@@ -357,7 +357,7 @@ class SpectralElement2D(element.Element2D):
             return step
 
         iter_ = 0
-        while F > tol and iter_ < max_iters:
+        while tol < F and iter_ < max_iters:
             iter_ += 1
 
             # find descent direction by Newton
@@ -457,7 +457,7 @@ class SpectralElement2D(element.Element2D):
             if not ignore_out_of_bounds:
                 for dim in range(2):
                     local[dim] = min(1, max(-1, local[dim]))
-        return (local, F < tol)
+        return (local, tol > F)
 
     def lagrange_eval1D(
         self,
@@ -672,7 +672,7 @@ class SpectralElement2D(element.Element2D):
         self,
         pos_field: Field,
         field: Field,
-        jacobian_scale: Field = Field(tuple(), tuple(), 1),
+        jacobian_scale: Field = Field((), (), 1),  # NOQA: B008
     ) -> Field:
         """
         Integrates `field` $f$ over the element. The result is the value of
@@ -709,7 +709,7 @@ class SpectralElement2D(element.Element2D):
         pos_field: Field,
         field: Field,
         indices: colltypes.Sequence[ArrayLike] | None = None,
-        jacobian_scale: Field = Field(tuple(), tuple(), 1),
+        jacobian_scale: Field = Field((), (), 1),  # NOQA: B008
     ) -> Field:
         """
         Computes the integral $\\int \\alpha \\phi_i f ~ dV$
@@ -755,7 +755,7 @@ class SpectralElement2D(element.Element2D):
         self,
         pos_field: Field,
         indices: colltypes.Sequence[np.ndarray] | None = None,
-        jacobian_scale: Field = Field(tuple(), tuple(), 1),
+        jacobian_scale: Field = Field((), (), 1),  # NOQA: B008
     ) -> Field:
         """
         Recovers the mass matrix entries $\\int \\alpha \\phi_i \\phi_j ~ dV$
@@ -824,7 +824,7 @@ class SpectralElement2D(element.Element2D):
         Jw = Jw.basis[*indsJ]
         return Field(
             indsJ.shape,
-            tuple(),
+            (),
             np.where(
                 np.logical_and(
                     indsI[0, ...] == indsJ[0, ...], indsI[1, ...] == indsJ[1, ...]
@@ -841,7 +841,7 @@ class SpectralElement2D(element.Element2D):
         pos_field: Field,
         field: Field,
         indices: colltypes.Sequence[ArrayLike] | None = None,
-        jacobian_scale: Field = Field(tuple(), tuple(), 1),
+        jacobian_scale: Field = Field((), (), 1),  # NOQA: B008
     ) -> Field:
         """
         Computes the integral $\\int \\alpha \\nabla \\phi_i \\cdot f ~ dV$
@@ -928,7 +928,7 @@ class SpectralElement2D(element.Element2D):
         pos_field: Field,
         field: Field,
         indices: colltypes.Sequence[ArrayLike] | None = None,
-        jacobian_scale: Field = Field(tuple(), tuple(), 1),
+        jacobian_scale: Field = Field((), (), 1),  # NOQA: B008
     ) -> Field:
         """
         Computes the integral $\\int \\alpha \\nabla \\phi_i \\cdot \\nabla f ~ dV$

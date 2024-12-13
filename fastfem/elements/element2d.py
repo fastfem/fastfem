@@ -59,11 +59,10 @@ class Element2D(ElementBase, IsoparametricElement):
         if not isinstance(Y, np.ndarray):
             Y = np.array(Y)
         if not shapes_compatible(np.shape(X), np.shape(Y)):
-            raise ValueError(
-                f"shapes of X {np.shape(X)} and Y {np.shape(Y)} are incompatible."
-            )
+            message = f"shapes of X {np.shape(X)} and Y {np.shape(Y)} are incompatible."
+            raise ValueError(message)
         field, _ = FieldType.broadcast_field_compatibility(
-            field, FieldType(self.basis_shape(), tuple(), np.array(0))
+            field, FieldType(self.basis_shape(), (), np.array(0))
         )
         return self._interpolate_field(field, X, Y)
 
@@ -122,17 +121,18 @@ class Element2D(ElementBase, IsoparametricElement):
         if pos_field is None:
             self._verify_field_compatibilities(field=field)
             field, _ = FieldType.broadcast_field_compatibility(
-                field, FieldType(self.basis_shape(), tuple(), np.array(0))
+                field, FieldType(self.basis_shape(), (), np.array(0))
             )
         else:
             self._verify_field_compatibilities(field=field, pos_field=pos_field)
             if pos_field.point_shape != (2,):
-                raise ValueError(
+                message = (
                     "pos_field must have point_shape (2,). Found"
                     f" {pos_field.point_shape} instead."
                 )
+                raise ValueError(message)
             pos_field, field, _ = FieldType.broadcast_field_compatibility(
-                pos_field, field, FieldType(self.basis_shape(), tuple(), np.array(0))
+                pos_field, field, FieldType(self.basis_shape(), (), np.array(0))
             )
 
         return self._compute_field_gradient(field, pos_field)
@@ -212,25 +212,26 @@ class Element2D(ElementBase, IsoparametricElement):
         if pos_field is None:
             self._verify_field_compatibilities(field=field)
             if not shapes_compatible(np.shape(X), np.shape(Y)):
-                raise ValueError(
+                message = (
                     f" shapes of X {np.shape(X)} and Y {np.shape(Y)} incompatible."
                 )
+                raise ValueError(message)
             field, _ = FieldType.broadcast_field_compatibility(
-                field, FieldType(self.basis_shape(), tuple(), np.array(0))
+                field, FieldType(self.basis_shape(), (), np.array(0))
             )
         else:
             self._verify_field_compatibilities(field=field, pos_field=pos_field)
             if not shapes_compatible(np.shape(X), np.shape(Y)):
-                raise ValueError(
-                    f"shapes of X {np.shape(X)} and Y {np.shape(Y)} incompatible."
-                )
+                message = f"shapes of X {np.shape(X)} and Y {np.shape(Y)} incompatible."
+                raise ValueError(message)
             if pos_field.point_shape != (2,):
-                raise ValueError(
+                message = (
                     "pos_field must have point_shape (2,). Found"
                     f" {pos_field.point_shape} instead."
                 )
+                raise ValueError(message)
             pos_field, field, _ = FieldType.broadcast_field_compatibility(
-                pos_field, field, FieldType(self.basis_shape(), tuple(), np.array(0))
+                pos_field, field, FieldType(self.basis_shape(), (), np.array(0))
             )
 
         return self._interpolate_field_gradient(field, X, Y, pos_field)
@@ -270,10 +271,11 @@ class Element2D(ElementBase, IsoparametricElement):
             NDArray: an array representing the gradient of the field evaluated
                 at each point.
         """
-        self._dev_warn(
-            "Element._interpolate_field_gradient() called, "
-            + "which delegates to compute_field_gradient() and interpolate_field()"
+        message = (
+            "Element._interpolate_field_gradient() called, which delegates to"
+            " compute_field_gradient() and interpolate_field()"
         )
+        self._dev_warn(message)
         return self.interpolate_field(
             self.compute_field_gradient(field, pos_field),
             X,
@@ -284,7 +286,7 @@ class Element2D(ElementBase, IsoparametricElement):
         self,
         pos_field: FieldType,
         field: FieldType,
-        jacobian_scale: FieldType = FieldType(tuple(), tuple(), 1),
+        jacobian_scale: FieldType = FieldType((), (), 1),  # NOQA: B008
     ) -> FieldType:
         """
         Integrates `field` $f$ over the element. The result is the value of
@@ -309,15 +311,16 @@ class Element2D(ElementBase, IsoparametricElement):
             pos_field=pos_field, field=field, jacobian_scale=jacobian_scale
         )
         if pos_field.point_shape != (2,):
-            raise ValueError(
+            message = (
                 "pos_field must have point_shape (2,). Found"
                 f" {pos_field.point_shape} instead."
             )
+            raise ValueError(message)
         pos_field, field, jacobian_scale, _ = FieldType.broadcast_field_compatibility(
             pos_field,
             field,
             jacobian_scale,
-            FieldType(self.basis_shape(), tuple(), np.array(0)),
+            FieldType(self.basis_shape(), (), np.array(0)),
         )
         return self._integrate_field(pos_field, field, jacobian_scale)
 
@@ -354,7 +357,7 @@ class Element2D(ElementBase, IsoparametricElement):
         pos_field: FieldType,
         field: FieldType,
         indices: colltypes.Sequence | None = None,
-        jacobian_scale: FieldType = FieldType(tuple(), tuple(), 1),
+        jacobian_scale: FieldType = FieldType((), (), 1),  # NOQA: B008
     ) -> FieldType:
         """
         Computes the integral $\\int \\alpha \\phi_i f ~ dV$
@@ -386,15 +389,16 @@ class Element2D(ElementBase, IsoparametricElement):
             pos_field=pos_field, field=field, jacobian_scale=jacobian_scale
         )
         if pos_field.point_shape != (2,):
-            raise ValueError(
+            message = (
                 "pos_field must have point_shape (2,). Found"
                 f" {pos_field.point_shape} instead."
             )
+            raise ValueError(message)
         pos_field, field, jacobian_scale, _ = FieldType.broadcast_field_compatibility(
             pos_field,
             field,
             jacobian_scale,
-            FieldType(self.basis_shape(), tuple(), np.array(0)),
+            FieldType(self.basis_shape(), (), np.array(0)),
         )
         return self._integrate_basis_times_field(
             pos_field, field, indices, jacobian_scale
@@ -440,7 +444,7 @@ class Element2D(ElementBase, IsoparametricElement):
         self,
         pos_field: FieldType,
         indices: colltypes.Sequence | None = None,
-        jacobian_scale: FieldType = FieldType(tuple(), tuple(), 1),
+        jacobian_scale: FieldType = FieldType((), (), 1),  # NOQA: B008
     ) -> FieldType:
         """
         Recovers the mass matrix entries $\\int \\alpha \\phi_i \\phi_j ~ dV$
@@ -473,14 +477,15 @@ class Element2D(ElementBase, IsoparametricElement):
             pos_field=pos_field, jacobian_scale=jacobian_scale
         )
         if pos_field.point_shape != (2,):
-            raise ValueError(
+            message = (
                 "pos_field must have point_shape (2,). Found"
                 f" {pos_field.point_shape} instead."
             )
+            raise ValueError(message)
         pos_field, jacobian_scale, _ = FieldType.broadcast_field_compatibility(
             pos_field,
             jacobian_scale,
-            FieldType(self.basis_shape(), tuple(), np.array(0)),
+            FieldType(self.basis_shape(), (), np.array(0)),
         )
         return self._mass_matrix(pos_field, indices, jacobian_scale)
 
@@ -517,10 +522,9 @@ class Element2D(ElementBase, IsoparametricElement):
         Returns:
             NDArray: an array representing the mass matrix, or portions thereof.
         """
-
         self._dev_warn(
             "Element._mass_matrix() called, which delegates "
-            + "to integrate_basis_times_field()"
+            "to integrate_basis_times_field()"
         )
         mat = fnp.moveaxis(
             self.integrate_basis_times_field(
@@ -545,7 +549,7 @@ class Element2D(ElementBase, IsoparametricElement):
         pos_field: FieldType,
         field: FieldType,
         indices: colltypes.Sequence | None = None,
-        jacobian_scale: FieldType = FieldType(tuple(), tuple(), 1),
+        jacobian_scale: FieldType = FieldType((), (), 1),  # NOQA: B008
     ) -> FieldType:
         """
         Computes the integral $\\int \\alpha \\nabla \\phi_i \\cdot f ~ dV$
@@ -575,15 +579,16 @@ class Element2D(ElementBase, IsoparametricElement):
             pos_field=pos_field, field=field, jacobian_scale=jacobian_scale
         )
         if pos_field.point_shape != (2,):
-            raise ValueError(
+            message = (
                 "pos_field must have point_shape (2,). Found"
                 f" {pos_field.point_shape} instead."
             )
+            raise ValueError(message)
         pos_field, field, jacobian_scale, _ = FieldType.broadcast_field_compatibility(
             pos_field,
             field,
             jacobian_scale,
-            FieldType(self.basis_shape(), tuple(), np.array(0)),
+            FieldType(self.basis_shape(), (), np.array(0)),
         )
         return self._integrate_grad_basis_dot_field(
             pos_field, field, indices, jacobian_scale
@@ -628,7 +633,7 @@ class Element2D(ElementBase, IsoparametricElement):
         pos_field: FieldType,
         field: FieldType,
         indices: colltypes.Sequence | None = None,
-        jacobian_scale: FieldType = FieldType(tuple(), tuple(), 1),
+        jacobian_scale: FieldType = FieldType((), (), 1),  # NOQA: B008
     ) -> FieldType:
         """
         Computes the integral $\\int \\alpha \\nabla \\phi_i \\cdot \\nabla f ~ dV$
@@ -655,15 +660,16 @@ class Element2D(ElementBase, IsoparametricElement):
             pos_field=pos_field, field=field, jacobian_scale=jacobian_scale
         )
         if pos_field.point_shape != (2,):
-            raise ValueError(
+            message = (
                 "pos_field must have point_shape (2,). Found"
                 f" {pos_field.point_shape} instead."
             )
+            raise ValueError(message)
         pos_field, field, jacobian_scale, _ = FieldType.broadcast_field_compatibility(
             pos_field,
             field,
             jacobian_scale,
-            FieldType(self.basis_shape(), tuple(), np.array(0)),
+            FieldType(self.basis_shape(), (), np.array(0)),
         )
         return self._integrate_grad_basis_dot_grad_field(
             pos_field, field, indices, jacobian_scale
@@ -699,7 +705,7 @@ class Element2D(ElementBase, IsoparametricElement):
         """
         self._dev_warn(
             "Element._integrate_grad_basis_dot_grad_field() called, "
-            + "which delegates to integrate_grad_basis_dot_field()"
+            "which delegates to integrate_grad_basis_dot_field()"
         )
         return self.integrate_grad_basis_dot_field(
             pos_field,
@@ -751,12 +757,13 @@ class StaticElement2D(ElementBase, IsoparametricElement):
         if not isinstance(Y, np.ndarray):
             Y = np.array(Y)
         if not shapes_compatible(field.stack_shape, np.shape(X), np.shape(Y)):
-            raise ValueError(
+            message = (
                 f"field stack_shape {field.stack_shape} must be compatible with the"
                 f" shapes of X {np.shape(X)} and Y {np.shape(Y)}."
             )
+            raise ValueError(message)
         field, _ = FieldType.broadcast_field_compatibility(
-            field, FieldType(self.basis_shape(), tuple(), np.array(0))
+            field, FieldType(self.basis_shape(), (), np.array(0))
         )
         return self._interpolate_field(field, X, Y)
 
@@ -786,7 +793,7 @@ class StaticElement2D(ElementBase, IsoparametricElement):
     def integrate_field(
         self,
         field: FieldType,
-        jacobian_scale: FieldType = FieldType(tuple(), tuple(), 1),
+        jacobian_scale: FieldType = FieldType((), (), 1),  # NOQA: B008
     ) -> FieldType:
         """
         Integrates `field` $f$ over the element. The result is the value of
@@ -809,7 +816,7 @@ class StaticElement2D(ElementBase, IsoparametricElement):
         field, jacobian_scale, _ = FieldType.broadcast_field_compatibility(
             field,
             jacobian_scale,
-            FieldType(self.basis_shape(), tuple(), np.array(0)),
+            FieldType(self.basis_shape(), (), np.array(0)),
         )
         return self._integrate_field(field, jacobian_scale)
 
@@ -842,7 +849,7 @@ class StaticElement2D(ElementBase, IsoparametricElement):
         self,
         field: FieldType,
         indices: colltypes.Sequence | None = None,
-        jacobian_scale: FieldType = FieldType(tuple(), tuple(), 1),
+        jacobian_scale: FieldType = FieldType((), (), 1),  # NOQA: B008
     ) -> FieldType:
         """
         Computes the integral $\\int \\alpha \\phi_i f ~ dV$
@@ -872,7 +879,7 @@ class StaticElement2D(ElementBase, IsoparametricElement):
         field, jacobian_scale, _ = FieldType.broadcast_field_compatibility(
             field,
             jacobian_scale,
-            FieldType(self.basis_shape(), tuple(), np.array(0)),
+            FieldType(self.basis_shape(), (), np.array(0)),
         )
         return self._integrate_basis_times_field(field, indices, jacobian_scale)
 
@@ -912,7 +919,7 @@ class StaticElement2D(ElementBase, IsoparametricElement):
     def mass_matrix(
         self,
         indices: colltypes.Sequence | None = None,
-        jacobian_scale: FieldType = FieldType(tuple(), tuple(), 1),
+        jacobian_scale: FieldType = FieldType((), (), 1),  # NOQA: B008
     ) -> FieldType:
         """
         Recovers the mass matrix entries $\\int \\alpha \\phi_i \\phi_j ~ dV$
@@ -942,7 +949,7 @@ class StaticElement2D(ElementBase, IsoparametricElement):
         self._verify_field_compatibilities(jacobian_scale=jacobian_scale)
         jacobian_scale, _ = FieldType.broadcast_field_compatibility(
             jacobian_scale,
-            FieldType(self.basis_shape(), tuple(), np.array(0)),
+            FieldType(self.basis_shape(), (), np.array(0)),
         )
         return self._mass_matrix(indices, jacobian_scale)
 
@@ -981,7 +988,7 @@ class StaticElement2D(ElementBase, IsoparametricElement):
 
         self._dev_warn(
             "Element._mass_matrix() called, which delegates "
-            + "to integrate_basis_times_field()"
+            "to integrate_basis_times_field()"
         )
         mat = self.integrate_basis_times_field(
             self.basis_fields(),
@@ -996,7 +1003,7 @@ class StaticElement2D(ElementBase, IsoparametricElement):
         self,
         field: FieldType,
         indices: colltypes.Sequence | None = None,
-        jacobian_scale: FieldType = FieldType(tuple(), tuple(), 1),
+        jacobian_scale: FieldType = FieldType((), (), 1),  # NOQA: B008
     ) -> FieldType:
         """
         Computes the integral $\\int \\alpha \\nabla \\phi_i \\cdot f ~ dV$
@@ -1024,7 +1031,7 @@ class StaticElement2D(ElementBase, IsoparametricElement):
         field, jacobian_scale, _ = FieldType.broadcast_field_compatibility(
             field,
             jacobian_scale,
-            FieldType(self.basis_shape(), tuple(), np.array(0)),
+            FieldType(self.basis_shape(), (), np.array(0)),
         )
         return self._integrate_grad_basis_dot_field(field, indices, jacobian_scale)
 
@@ -1063,7 +1070,7 @@ class StaticElement2D(ElementBase, IsoparametricElement):
         self,
         field: FieldType,
         indices: colltypes.Sequence | None = None,
-        jacobian_scale: FieldType = FieldType(tuple(), tuple(), 1),
+        jacobian_scale: FieldType = FieldType((), (), 1),  # NOQA: B008
     ) -> FieldType:
         """
         Computes the integral $\\int \\alpha \\nabla \\phi_i \\cdot \\nabla f ~ dV$
@@ -1088,7 +1095,7 @@ class StaticElement2D(ElementBase, IsoparametricElement):
         field, jacobian_scale, _ = FieldType.broadcast_field_compatibility(
             field,
             jacobian_scale,
-            FieldType(self.basis_shape(), tuple(), np.array(0)),
+            FieldType(self.basis_shape(), (), np.array(0)),
         )
         return self._integrate_grad_basis_dot_grad_field(field, indices, jacobian_scale)
 

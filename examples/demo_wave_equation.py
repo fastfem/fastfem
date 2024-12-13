@@ -1,9 +1,10 @@
-import fastfem.mesh as ffm
-import fastfem.elements as elems
-from fastfem.fields import numpy_similes as fnp, ShapeComponent
-import fastfem.plotter as fplt
 import numpy as np
 
+import fastfem.elements as elems
+import fastfem.mesh as ffm
+import fastfem.plotter as fplt
+from fastfem.fields import ShapeComponent
+from fastfem.fields import numpy_similes as fnp
 
 # ========[ create a mesh element ]========
 m = ffm.create_a_rectangle_mesh(

@@ -1,7 +1,8 @@
 import itertools
-from typing import Literal, Sequence, cast
+from collections.abc import Sequence
+from typing import Literal, cast
 
-import numpy
+import numpy  # NOQA: ICN001
 from numpy.typing import ArrayLike
 
 from fastfem.fields.field import (
@@ -83,15 +84,15 @@ def sum(
         Field: _description_
     """
     if axes is None:
-        return Field(tuple(), tuple(), np(field.use_jax).sum(field.coefficients))
-    axes_: tuple[FieldAxisIndexType, ...] = tuple()
+        return Field((), (), np(field.use_jax).sum(field.coefficients))
+    axes_: tuple[FieldAxisIndexType, ...] = ()
     if isinstance(axes, ShapeComponent):
         axes_ = tuple(
             FieldAxisIndex(axes, i) for i in range(len(field.get_shape(axes)))
         )
     elif isinstance(axes, FieldAxisIndex):
         axes_ = (axes,)
-    elif isinstance(axes[0], tuple) or isinstance(axes[0], FieldAxisIndex):
+    elif isinstance(axes[0], tuple | FieldAxisIndex):
         # ^ force tuple[tuple]              ^ force tuple[FieldAxisIndex]
 
         # for some reason pyright doesn't approve
@@ -150,7 +151,8 @@ def einsum(
 ) -> Field:
     fieldops = tuple(op for op in operands if isinstance(op, Field))
     if len(fieldops) == 0:
-        raise ValueError("Please provide at least one Field!")
+        message = "Please provide at least one Field!"
+        raise ValueError(message)
 
     valid_indices = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz"
     desired_order = fieldops[0].shape_order
@@ -165,14 +167,14 @@ def einsum(
         comp1rs, comp2rs = comp2rs, comp1rs
 
     # broadcast all components except the one being selected
-    broadcast_shape = [tuple()] * 3
+    broadcast_shape = [()] * 3
     for comp in comp1rs, comp2rs:
-        broadcast_shape[comp] = numpy.broadcast_shapes(
+        broadcast_shape[comp] = numpy.broadcast_shapes(  # type: ignore
             *(field.get_shape(comp) for field in fieldops)
         )
-    broadcasted = list()
+    broadcasted = []
     for field in fieldops:
-        broadcast_shape[component_selector] = field.get_shape(component_selector)
+        broadcast_shape[component_selector] = field.get_shape(component_selector)  # type: ignore
         broadcasted.append(
             field.broadcast_to_shape(
                 broadcast_shape[ShapeComponent.STACK],
@@ -192,13 +194,14 @@ def einsum(
         comp2label = valid_indices[-1]
 
     if comp1label in subscripts or comp2label in subscripts:
-        raise ValueError(
+        message = (
             f"Subscripts {comp1label} and {comp2label} have not been reserved for"
             " non-selected indices!"
         )
+        raise ValueError(message)
 
     # the shapes of the result
-    output_shapes: list[tuple[int, ...]] = [tuple()] * 3
+    output_shapes: list[tuple[int, ...]] = [()] * 3
     output_shapes[desired_order[comp1rs]] = broadcasted[0].get_shape(comp1rs)
     output_shapes[desired_order[comp2rs]] = broadcasted[0].get_shape(comp2rs)
     use_jax = any(f.use_jax for f in broadcasted)
@@ -242,7 +245,7 @@ def einsum(
     einstr = "->".join(
         ",".join(
             (subs if ins is None else ins[0] + subs + ins[1])
-            for subs, ins in zip(sec.split(","), ops_iter)
+            for subs, ins in zip(sec.split(","), ops_iter, strict=False)
         )
         for sec in subscripts.split("->")
     )
@@ -296,11 +299,11 @@ def stack(fields: Sequence[Field], axis: FieldAxisIndexType) -> Field:
         Field: _description_
     """
     _np = np(*fields)
-    shapes = [tuple()] * 3
-    shapes[ShapeComponent.BASIS] = fields[0].basis_shape
-    shapes[ShapeComponent.STACK] = fields[0].stack_shape
-    shapes[ShapeComponent.POINT] = fields[0].point_shape
-    shapes[axis[0]] = (
+    shapes = [()] * 3
+    shapes[ShapeComponent.BASIS] = fields[0].basis_shape  # type: ignore
+    shapes[ShapeComponent.STACK] = fields[0].stack_shape  # type: ignore
+    shapes[ShapeComponent.POINT] = fields[0].point_shape  # type: ignore
+    shapes[axis[0]] = (  # type: ignore
         shapes[axis[0]][: axis[1]] + (len(fields),) + shapes[axis[0]][axis[1] :]
     )
     return Field(
@@ -316,10 +319,10 @@ def stack(fields: Sequence[Field], axis: FieldAxisIndexType) -> Field:
 
 
 __all__ = [
+    "abs",
+    "einsum",
     "linalg",
     "moveaxis",
-    "sum",
     "reshape",
-    "einsum",
-    "abs",
+    "sum",
 ]

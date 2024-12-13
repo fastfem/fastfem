@@ -21,15 +21,16 @@ def det(
     """
     selshape = field.get_shape(component_selector)
     if len(selshape) != 2 and selshape[0] != selshape[1]:
-        raise FieldShapeError(
+        message = (
             "Cannot take the determinant along component"
             f" {component_selector} ({selshape}). Must be square!"
         )
-    shapes = [tuple()] * 3
-    shapes[ShapeComponent.BASIS] = field.basis_shape
-    shapes[ShapeComponent.POINT] = field.point_shape
-    shapes[ShapeComponent.STACK] = field.stack_shape
-    shapes[component_selector] = tuple()
+        raise FieldShapeError(message)
+    shapes = [()] * 3
+    shapes[ShapeComponent.BASIS] = field.basis_shape  # type: ignore
+    shapes[ShapeComponent.POINT] = field.point_shape  # type: ignore
+    shapes[ShapeComponent.STACK] = field.stack_shape  # type: ignore
+    shapes[component_selector] = ()
     _np = np(field)
     return Field(
         shapes[ShapeComponent.BASIS],
@@ -68,10 +69,11 @@ def inv(
     """
     selshape = field.get_shape(component_selector)
     if len(selshape) != 2 and selshape[0] != selshape[1]:
-        raise FieldShapeError(
+        message = (
             "Cannot take the determinant along component"
             f" {component_selector} ({selshape}). Must be square!"
         )
+        raise FieldShapeError(message)
     _np = np(field)
     return Field(
         field.basis_shape,

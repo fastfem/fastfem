@@ -1,9 +1,10 @@
-import numpy as np
-import pyvista as pv
-from unittest.mock import MagicMock
-import pytest
 import pathlib
 import sys
+from unittest.mock import MagicMock
+
+import numpy as np
+import pytest
+import pyvista as pv
 
 import fastfem.mesh as m
 import fastfem.plotter as p

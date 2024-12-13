@@ -1,5 +1,6 @@
-import numpy as np
 import time
+
+import numpy as np
 import pyvista as pv
 from pyvista import CellType
 
@@ -45,9 +46,7 @@ class VisualMesh:
         cell_types = np.full(len(strips), cell_type, dtype=np.uint8)
 
         # Create the unstructured grid
-        grid = pv.UnstructuredGrid(cell_arr, cell_types, points)
-
-        return grid
+        return pv.UnstructuredGrid(cell_arr, cell_types, points)
 
     def plot_mesh(
         self,
@@ -135,9 +134,8 @@ class VisualMesh:
             cmap: Colormap for the data.
         """
         if fps > 25 and not force:
-            raise ValueError(
-                "The maximum value for fps is 25. Please decrease your fps value."
-            )
+            message = "The maximum value for fps is 25. Please decrease your fps value."
+            raise ValueError(message)
 
         # Define the grid and plotter objects
         grid = self.define_plotter()
@@ -155,14 +153,14 @@ class VisualMesh:
             point_size=10,
             scalars="Data",
             cmap=cmap,
-            scalar_bar_args=dict(
-                title_font_size=20,
-                label_font_size=16,
-                n_labels=3,
-                italic=True,
-                fmt="%.2f",
-                font_family="arial",
-            ),
+            scalar_bar_args={
+                "title_font_size": 20,
+                "label_font_size": 16,
+                "n_labels": 3,
+                "italic": True,
+                "fmt": "%.2f",
+                "font_family": "arial",
+            },
         )
 
         # Setting plotter settings

@@ -13,7 +13,7 @@ from .generator import (
     mesh,
 )
 
-__all__ = ["create_a_rectangle_mesh", "create_a_square_mesh", "Rectangle", "Square"]
+__all__ = ["Rectangle", "Square", "create_a_rectangle_mesh", "create_a_square_mesh"]
 
 
 def __dir__() -> list[str]:

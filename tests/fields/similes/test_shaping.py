@@ -9,7 +9,7 @@ def test_moveaxis(permutation):
         return shapes[0] + shapes[1] + shapes[2]
 
     shapes = [(0, 1, 2), (3, 4, 5), (6, 7, 8)]
-    perm_shapes = [tuple()] * 3
+    perm_shapes = [()] * 3
     for i in range(len(perm_shapes)):
         perm_shapes[permutation[i]] = shapes[i]
     arr = np.broadcast_to(0, sum_shapes(perm_shapes))

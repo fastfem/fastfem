@@ -1,6 +1,7 @@
-from numpy.typing import NDArray
 import typing
-import numpy as _np
+
+import numpy as _np  # NOQA: ICN001
+from numpy.typing import NDArray
 
 from fastfem.fields.field import Field, ShapeComponent
 
@@ -35,42 +36,44 @@ def assemble_field_add(
     # verify assembly shapes are compatible
     subelem_basis_shape = disassembled_field.basis_shape
     if node_indices.shape[-len(subelem_basis_shape) :] != subelem_basis_shape:
-        raise ValueError(
+        message = (
             "The last axes of node_indices must match the basis shape!"
             f" ({node_indices.shape[-len(subelem_basis_shape):]} != basis shape"
             f" {subelem_basis_shape}; node_indices.shape = {node_indices.shape})"
         )
+        raise ValueError(message)
     assembly_stack_shape = node_indices.shape[: -len(subelem_basis_shape)]
     if (
         assembly_stack_shape
         != disassembled_field.stack_shape[: len(assembly_stack_shape)]
     ):
-        raise ValueError(
+        message = (
             "The first axes of node_indices must match the first axes of the stack"
             f" shape! ({node_indices.shape[:-len(subelem_basis_shape)]} !="
             f" {disassembled_field.stack_shape[:len(assembly_stack_shape)]};"
             f" node_indices.shape = {node_indices.shape}; stack_shape ="
             f" {disassembled_field.stack_shape})"
         )
+        raise ValueError(message)
     if isinstance(assembled_basis_shape, int):
         assembled_basis_shape = (assembled_basis_shape,)
     if len(assembled_basis_shape) != 1:
-        raise ValueError(
+        message = (
             "assembled_basis_shape must have 1-dimension! (assembled_basis_shape ="
             f" {assembled_basis_shape})"
         )
+        raise ValueError(message)
 
     if disassembled_field.use_jax:
-        raise NotImplementedError(
-            "JAX-friendly accumulation methods not yet implemented!"
-        )
+        message = "JAX-friendly accumulation methods not yet implemented!"
+        raise NotImplementedError(message)
 
-    outshape = [tuple()] * 3
-    outshape[ShapeComponent.BASIS] = assembled_basis_shape
-    outshape[ShapeComponent.STACK] = disassembled_field.stack_shape[
+    outshape = [()] * 3
+    outshape[ShapeComponent.BASIS] = assembled_basis_shape  # type: ignore
+    outshape[ShapeComponent.STACK] = disassembled_field.stack_shape[  # type: ignore
         len(assembly_stack_shape) :
     ]
-    outshape[ShapeComponent.POINT] = disassembled_field.point_shape
+    outshape[ShapeComponent.POINT] = disassembled_field.point_shape  # type: ignore
     accum = _np.zeros(
         outshape[disassembled_field.shape_order_inverse[0]]
         + outshape[disassembled_field.shape_order_inverse[1]]
