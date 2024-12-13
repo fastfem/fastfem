@@ -1,4 +1,4 @@
-name: Deploy the documentation
+name: Build and deploy the documentation
 
 on:
   # Runs on pushes targeting the default branch
