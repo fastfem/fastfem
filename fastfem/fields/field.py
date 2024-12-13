@@ -802,8 +802,8 @@ class Field:
 
         Raises:
             FieldShapeError: if the broadcast cannot be done by standard numpy
-            broadcasting rules in each component. Note that broadcasting the basis shape
-            is permitted, beyond standard compatibility rules.
+                broadcasting rules in each component. Note that broadcasting the basis
+                shape is permitted, beyond standard compatibility rules.
 
         Returns:
             Field: The broadcasted field.
@@ -881,7 +881,7 @@ class Field:
         more than two fields can be passed in.
 
         Args:
-            tuple[Field, ...]: The fields to broadcast.
+            fields (tuple[Field, ...]): The fields to broadcast.
             strict_basis (bool, optional): If true, the basis rule holds. Otherwise,
                 only basis shape numpy-broadcastibility is checked.
 
@@ -911,7 +911,7 @@ class Field:
         more than two fields can be passed in.
 
         Args:
-            tuple[Field, ...]: The fields to broadcast.
+            fields (tuple[Field, ...]): The fields to broadcast.
             strict_basis (bool, optional): If true, the basis rule holds. Otherwise,
                 only basis shape numpy-broadcastibility is checked.
             shapes_only (bool, optional): If true, the target shape is returned and no
@@ -942,7 +942,7 @@ class Field:
         this relation is associative, more than two fields can be passed in.
 
         Args:
-            tuple[Field, ...]: The fields to query compatibility.
+            fields (tuple[Field, ...]): The fields to query compatibility.
             strict_basis (bool, optional): If true, the basis rule holds. Otherwise,
                 only basis shape numpy-broadcastibility is checked.
 
@@ -983,7 +983,7 @@ class Field:
         they are compatible, or raises an error if they are not.
 
         Args:
-            tuple[Field, ...]: The fields to broadcast.
+            fields (tuple[Field, ...]): The fields to broadcast.
             strict_basis (bool, optional): If true, the basis rule holds. Otherwise,
                 only basis shape numpy-broadcastibility is checked.
 

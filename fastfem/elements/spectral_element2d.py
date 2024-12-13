@@ -139,8 +139,8 @@ class SpectralElement2D(element.Element2D):
 
         Args:
             deriv_order (int, optional): The order $r$ of the derivative. This is
-            expected to be an integer between 0 (inclusive) and degree+1 (exclusive),
-            but this check is not done. Defaults to 0.
+                expected to be an integer between 0 (inclusive) and degree+1 (exclusive),
+                but this check is not done. Defaults to 0.
 
         Returns:
             np.ndarray: The coefficient array `P[i,k]` which is of shape
@@ -257,7 +257,7 @@ class SpectralElement2D(element.Element2D):
             max_iters (int, optional): The maximum number of iterations taken.
                     Terminates afterwards, returning ((x,y),False).
             def_grad_badness_tol (float, optional): The minimum allowable badness
-            parameter, after which an error is raised. Defaults to 1e-4.
+                    parameter, after which an error is raised. Defaults to 1e-4.
             ignore_out_of_bounds (bool, optional): Whether or not descent directions can
                     point outside of the domain. If False, then locate_point stays
                     within the element. Defaults to False.
