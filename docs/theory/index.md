@@ -1,5 +1,8 @@
 # Theory
 
+!!! warning
+    This page is under construction. The content may be incomplete or contain errors.
+
 ## Introduction
 
 Phenomena guided by partial differential equations are omnipresent in a wide variety of scientific fields. While solutions can be found for simple initial and boundary conditions, their complex nature renders an analytical solution extremely difficult to derive, depending on the physics at hand and the geometry of the problem. In these cases, numerical schemes may be adopted to derive an approximate solution and gain insight into the problem, such as the finite element method.
