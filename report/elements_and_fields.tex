@@ -68,7 +68,14 @@ The fields passed into the integrate functions need to have an array structure, 
 \label{eqn:def_grad_discrete}
 \end{equation}
 when it is in the same space as the shape functions. Some elements may function better with multi-indexed shape functions (such as spectral elements), which further complicate the coefficient indices. Here, the field is represented with two sets of indices: the tensor indices and the shape indices. This combined with the \emph{field stacking} feature we discuss below to vectorize function calls, introduces the need to keep track of which index corresponds to what.
-To do this, we utilize a \verb+Field+ wrapper class, which takes a \emph{numpy} or \emph{JAX} array with the corresponding tensor, shape function, and stack index shapes. This has the added benefit of allowing the delegation of operations to \emph{JAX} or \emph{numpy} depending on if the \emph{JAX} feature set is necessary (say, for \emph{autodiff}).
+
+\bigskip
+
+While the size of the shape function multi-indices were fixed, the stack and tensor indices could vary and possibly collide. This became a problem when dealing with multiple field inputs, where indices might not line up due to implied broadcasting. Instead of forcing the user to make sure all of the indices line up, we decided that it was important to offload that burden, and let \emph{numpy} broadcasting rules dictate the indices within each multi-index. However, having the user pass in index shapes or offsets as arguments bloated the function call and, while re-indexing was automatically managed, still had users keep track of index shapes.
+
+\bigskip
+
+To fix this, we utilize a \verb+Field+ wrapper class, which takes a \emph{numpy} or \emph{JAX} array with the corresponding tensor, shape function, and stack index shapes. This has the added benefit of allowing the delegation of operations to \emph{JAX} or \emph{numpy} depending on if the \emph{JAX} feature set is necessary (say, for \emph{autodiff}).
 
 \paragraph{The Field Object}
 
