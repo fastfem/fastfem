@@ -1,5 +1,5 @@
 site_name: FastFEM
-site_description: A Python package for solving PDEs with the finite element method and automatic differentiation.
+site_description: A Python package for solving PDEs with FEM and automatic differentiation
 site_author: FastFEM Developers
 copyright: Copyright &copy; 2023 - 2024 FastFEM Developers
 site_url: https://fastfem.com/
@@ -30,15 +30,15 @@ theme:
   palette:
     - media: "(prefers-color-scheme: light)"
       scheme: default
-      primary: cyan
-      accent: cyan
+      primary: lime
+      accent: lime
       toggle:
         icon: material/lightbulb-outline
         name: "Switch to dark mode"
     - media: "(prefers-color-scheme: dark)"
       scheme: slate
-      primary: cyan
-      accent: cyan
+      primary: lime
+      accent: lime
       toggle:
         icon: material/lightbulb
         name: "Switch to light mode"
@@ -117,5 +117,4 @@ extra_javascript:
   - https://unpkg.com/katex@0/dist/contrib/auto-render.min.js
 
 extra_css:
-  - assets/stylesheets/fastfem.css
   - https://unpkg.com/katex@0/dist/katex.min.css

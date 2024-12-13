@@ -6,7 +6,7 @@
 [![pypi-version](<https://img.shields.io/pypi/v/fastfem?label=PyPI%20version&color=rgb(0%2C79%2C144)>)](https://pypi.python.org/pypi/fastfem)
 [![pypi-downloads](<https://img.shields.io/pepy/dt/fastfem?label=PyPI%20downloads&color=rgb(0%2C%2079%2C%20144)>)](https://pypistats.org/packages/fastfem)
 
-FastFEM is planned to be a general-purpose finite element method (FEM) library with a focus on great Python interface. Currently, it can only solve
+FastFEM is planned to be a general-purpose finite element method (FEM) library with a focus on great Python interface and automatic differentiation using JAX. Currently, it can only solve
 
 $$
 \begin{equation}
