@@ -4,15 +4,12 @@ repos:
     hooks:
       - id: trailing-whitespace
     types: [python, yaml, markdown, toml]
+    args: ["--files", "fastfem"]
   - repo: https://github.com/astral-sh/ruff-pre-commit
     rev: v0.8.2
     hooks:
       # Ruff's settings are configured in the pyproject.toml file
       - id: ruff
-        args: ["--fix", "--show-fixes"]
+        args: ["--fix", "--show-fixes", "fastfem"]
       - id: ruff-format
     types: [python, yaml, markdown, toml]
-  - repo: https://github.com/RobertCraigie/pyright-python
-    rev: v1.1.390
-    hooks:
-      - id: pyright
