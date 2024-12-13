@@ -45,7 +45,7 @@ $$
 ```
 ### Cross-Referencing Block Equations
 
-See [Equation 2](#eq-label) below.
+See [Equation 2](#eq:label) below.
 
 !!! note
     The equation numbering is not automatic for cross-referencing, unlike figures and tables.
@@ -58,7 +58,7 @@ $$
 { #eq:label }
 
 ```
-See [Equation 2](#eq-label) below.
+See [Equation 2](#eq:label) below.
 
 $$
 \begin{equation}
