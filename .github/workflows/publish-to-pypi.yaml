@@ -6,6 +6,12 @@ on:
     types:
       - published
 
+# Sets permissions of the GITHUB_TOKEN to allow smokeshow to set the coverage as commit
+# status:
+permissions:
+    contents: read
+    statuses: write
+
 jobs:
   call_tests_workflow:
     name: Test
