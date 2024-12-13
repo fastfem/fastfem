@@ -69,8 +69,10 @@ In addition, another capability added by the \texttt{plotter} branch is the abil
     \label{fig:PyVistaAnimated}
 \end{figure}
 
-Where the most notable difference with the \texttt{plot\_data()} method is the plotted time at the top-left corner of the figure. In addition, using the \texttt{animate\_data()} method, the user has control over the number of frames per second of the animation, and enhance readability of the solution.
+Where the most notable difference with the \texttt{plot\_data()} method is the plotted time at the top-left corner of the figure. In addition, using the \texttt{animate\_data()} method, the user has control over the number of frames per second of the animation, and enhance readability of the solution. All figures shown above may be generated through a simple test script, as provided in figure \ref{fig:example-plotter}.
 
 \textbf{Note}: Throughout the development of the \texttt{plotter} branch, testing remained a difficult aspect of the project. Many of the methods use rely on visual cues and generated plots to understand their validity. As such, the evaluation of the methods relied primarily in the assertion of the \textit{creation} of the method, rather than its actual content. To achieve this, \texttt{PyVista}'s show method (responsible for actually outputting the plot) was mocked using \texttt{unittest} and the \texttt{MonkeyPatch} testing fixture, such that no plot was actually generated thorugh the tests.
 
 Another particular difficulty lied in the testing of the \texttt{make\_movie()} and \texttt{make\_gif()} methods, due to incompabilities of file writing across different operating systems and their reliance on external libraries, which resulted in tests passing locally but not through GitHub's CI pipeline. As such, these tests are currently skipped, while the issue is being actively debugged.
+
+\pythonCodeBlock{figures/example_plotter.py}{Test script demonstrating plotter functions.}{fig:example-plotter}
