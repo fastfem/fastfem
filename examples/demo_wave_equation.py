@@ -5,10 +5,6 @@ import fastfem.plotter as fplt
 import numpy as np
 
 
-import matplotlib.pyplot as plt
-import matplotlib.tri as mpltri
-
-
 # ========[ create a mesh element ]========
 m = ffm.create_a_rectangle_mesh(
     horizontal_length=1,

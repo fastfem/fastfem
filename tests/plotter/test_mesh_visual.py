@@ -117,6 +117,7 @@ def test_plot_data(
         data=dummy_data[0],
     )
 
+
 def test_animate_data(
     monkeypatch: pytest.MonkeyPatch,
     mesh: m.Mesh,

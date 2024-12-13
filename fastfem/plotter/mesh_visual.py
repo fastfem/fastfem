@@ -82,9 +82,7 @@ class VisualMesh:
 
         if point_label:
             mask = points[:, 2] == 0  # Labeling points on xy plane
-            formatted_labels = [
-                f"({p[0]:.2f}, {p[1]:.2f})" for p in points[mask]
-            ]
+            formatted_labels = [f"({p[0]:.2f}, {p[1]:.2f})" for p in points[mask]]
             plotter.add_point_labels(
                 points[mask], formatted_labels, point_size=20, font_size=10
             )
@@ -136,7 +134,7 @@ class VisualMesh:
             data: The temperature data for each node, contained in a 3D array.
             cmap: Colormap for the data.
         """
-        if (fps > 25 and force == False):
+        if fps > 25 and force == False:
             raise ValueError(
                 "The maximum value for fps is 25. Please decrease your fps value."
             )
