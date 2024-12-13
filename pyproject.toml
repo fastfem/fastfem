@@ -20,7 +20,6 @@ dependencies = [
     "matplotlib==3.9.3",
     "gmsh==4.13.1",
     "pyvista[all]==0.44.2",
-    "vtk==9.3.0"
 ]
 authors = [
     { name = 'Sina Atalay', email = 'dev@atalay.biz' },
@@ -56,12 +55,13 @@ installer = "uv"
 python = "3.12"
 # Dependencies to be installed in the `default` virtual environment.
 dependencies = [
-    "ruff",     # to lint the code
-    "black",    # to format the code
-    "ipython",  # for ipython shell
-    "pyright",  # to check the types
-    "pytest",   # to run the tests
-    "coverage", # to measure the test coverage
+    "ruff",       # to lint the code
+    "black",      # to format the code
+    "ipython",    # for ipython shell
+    "pyright",    # to check the types
+    "pytest",     # to run the tests
+    "coverage",   # to measure the test coverage
+    "pre-commit", # to run the pre-commit hooks
 ]
 path = ".venv"
 [tool.hatch.envs.default.scripts]
@@ -71,6 +71,8 @@ format = "ruff check --fix && black fastfem tests" # hatch run format
 lint = "ruff check fastfem && ruff check tests" # hatch run lint
 # Check types with `pyright`:
 check-types = "pyright fastfem tests" # hatch run check-types
+# Run the pre-commit hooks:
+precommit = "pre-commit run --all-files" # hatch run pre-commit
 # Run the tests:
 test = "pytest" # hatch run tests
 # Run the tests and generate the coverage report as HTML:
