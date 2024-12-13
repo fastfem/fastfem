@@ -1,0 +1,61 @@
+We hereby present an overview of the mathematical formalism behind the finite element method. Let there be a parabolic partial differential equation of the form:
+
+\begin{equation}
+\frac{\partial^2 f}{\partial x^2} + \frac{\partial^2 f}{\partial y^2} = k(f) \frac{\partial f}{\partial t} + g(x,y)
+\end{equation}
+
+Where $f$ represents the function of interest (which may be interpreted as temperature in a heat conduction problem, for example), $k(f)$ is some function of $f$ and $g(x,y)$ is some spatial source/sink term. In a more compact form, this may be written as:
+
+\begin{equation}
+\nabla^2 f  = k\frac{\partial f}{\partial t} + g(x,y) \label{eqn:condensed-PDE}
+\end{equation}
+
+And may further be formulated in its weak form, where equation \ref{eqn:condensed-PDE} is multiplied by some test function $v$ in a Sobolev space $H_0^1$, i.e. smoothly differential once.
+
+\begin{equation}
+\int_\Omega \nabla^2 f v dV = \int_\Omega k \frac{\partial f}{\partial t}v dV + \int_\Omega gv dV \label{eqn:PDE-weakform}
+\end{equation}
+
+For some domain of interest $\Omega$, effectively determined by the initial and boundary conditions of the problem. Integrating equation \ref{eqn:PDE-weakform} by parts and applying Dirichlet BC's for the test function $v$, we arrive at the following form.
+
+\begin{equation}
+- \int_\Omega \mathbf{\nabla f} \cdot \mathbf{\nabla v} dV = \int_\Omega k \frac{df}{dt} v + \int_\Omega gv dV
+\end{equation}
+
+where each quantity may be represented as a sum:
+
+\begin{align}
+f = \sum_i^n f_i \phi_i(x,y) \nonumber \\
+\dot{f} =  \sum_i^n f'_i \phi_i(x,y) \nonumber \\
+g = \sum_i^n g_i \phi_i(x,y) \nonumber \\
+v = \sum_i^n v_i \phi_i(x,y) \nonumber
+\end{align}
+
+For some shape functions $\phi_i(x,y)$, which constitute an appropriate choice of basis for the original PDE.
+
+Then, the weak formulation is further simplified:
+
+\begin{align}
+    - \sum_i \sum_j \int_\Omega \nabla(f_i \phi_i) \cdot \nabla(v_j \phi_j) dV = \sum_i \sum_j \int_\Omega k (f'_i \phi_i) (v_j \phi_j) + \sum_i \sum_j \int_\Omega (g_i \phi_i) (v_j \phi_j) dV \\
+    - \sum_i \sum_j f_i v_j \int_\Omega (\nabla \phi_i) \cdot (\nabla \phi_j) dV = \sum_i \sum_j k f'_i v_j \int_\Omega  \phi_i \phi_j+ \sum_i \sum_j g_i v_j \int_\Omega \phi_i \phi_j dV \label{eqn:expanded_basis}
+\end{align}
+
+Where equation \ref{eqn:expanded_basis} may be expressed in matrix form as:
+
+\begin{equation}
+K \mathbf{f} = M (\mathbf{g} + \dot{f}) \label{eqn:matrix_form}
+\end{equation}
+
+Where $K$ is the stiffness matrix, $M$ is the mass matrix, and are expressed as:
+
+\begin{equation}
+    M(\phi_i,\phi_j) = \int_{\Omega}\phi_i \phi_j~dV
+    \label{eqn:mass_matrix}
+\end{equation}
+
+\begin{equation}
+    K(\phi_i,\phi_j) = \int_{\Omega}(\nabla\phi_i)\cdot (\nabla\phi_j)~dV
+    \label{eqn:stiffness_matrix}
+\end{equation}
+
+Then, equation \ref{eqn:matrix_form} is a linear system of equations, and may be solved using any scheme appropriate scheme.

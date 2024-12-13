@@ -105,6 +105,9 @@ serve = "mkdocs serve" # hatch run docs:serve
 [tool.ruff]
 output-format = "github"
 line-length = 88
+exclude = [
+    "report/**"
+]
 
 [tool.ruff.format]
 docstring-code-format = true

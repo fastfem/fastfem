@@ -1,16 +1,65 @@
 \documentclass[headings=standardclasses, abstract=true]{scrartcl}
 
 \usepackage{graphicx} % Required for inserting images
-\usepackage{biblatex} % Required for bibliography
-\addbibresource{../docs/assets/bibliography.bib} % Path to the bibliography file
+\usepackage[sorting=none, style=science]{biblatex} % Required for bibliography
+\usepackage{amsmath} % For math equations
+\usepackage{minted} % For code blocks
+\usepackage[framemethod=TikZ]{mdframed} % For code blocks
+\usepackage[svgnames]{xcolor} % For colors
+\usepackage{fontspec} % For custom fonts
+\usepackage{caption} % For subfigures
+\usepackage{subcaption} % For subfigures
+\usepackage{float}
 \usepackage[
-    pdfauthor={Sina Atalay},
-    pdftitle={RenderCV: A LaTeX CV/Resume App for Academics and Engineers},
+    top=3cm,
+    bottom=3cm,
+    left=3cm,
+    right=3cm
+]{geometry} % Required for setting the page size
+\usepackage[
+    pdfauthor={Sina Atalay, Sacha Escudier, Kentaro Hanson},
+    pdftitle={FastFEM v0.0.1},
     hidelinks=true
 ]{hyperref} % Required for hyperlinks and metadata
 
-\title{FastFEM}
-\subtitle{A Python package for solving PDEs with the finite element method}
+% Path to the bibliography file:
+\addbibresource{../docs/assets/bibliography.bib}
+
+% For Python blocks:
+\newmdenv[
+    outerlinewidth=1,
+    outerlinecolor=Gainsboro,
+    middlelinewidth=0,
+    backgroundcolor=GhostWhite,
+    roundcorner=3pt,
+    innerbottommargin=6pt,
+    innertopmargin=6pt,
+    innerleftmargin=12pt,
+    innerrightmargin=12pt,
+    skipbelow=-0pt
+]{pythonbox}
+\newfontfamily\vscodefont{Droid Sans Mono}[NFSSFamily=VSCode, Scale=0.65]
+\newcommand{\pythonCodeBlock}[3]{%
+    \begin{figure}
+        \centering
+        \begin{pythonbox}
+            \inputminted[fontfamily=VSCode, baselinestretch=0.8]{python}{#1}
+        \end{pythonbox}
+        \caption{#2}
+        \label{#3}
+    \end{figure}
+}
+
+% Update verbatim environment to use VS Code font:
+\let\origverbatim\verbatim
+\def\verbatim{\origverbatim\vscodefont}
+
+\title{\texttt{FastFEM v0.0.1}}
+\subtitle{
+    A Python package for solving PDEs with the finite element method    \\
+    \vspace{0.2cm}
+    \href{https://fastfem.com}{fastfem.com}
+}
 \author{
     Sina Atalay\textsuperscript{1*}, Sacha Escudier\textsuperscript{1*}, Kentaro Hanson\textsuperscript{1*} \\
     {\footnotesize \textsuperscript{1}Princeton University, Princeton, NJ, USA}\\
@@ -26,33 +75,91 @@
 \maketitle
 
 \begin{abstract}
-\noindent Lorem ipsum dolor sit amet, consectetur adipiscing elit. Vestibulum congue gravida sem non dictum. Aenean sit amet mi fermentum ante laoreet dictum sit amet a magna. Praesent sed aliquet dui. Vivamus scelerisque condimentum mauris id euismod. Duis elementum urna eu rutrum mattis. Donec fermentum, risus et viverra aliquet, ante sapien consequat augue, sit amet dictum est nisl id elit. Proin dapibus congue tincidunt. Pellentesque habitant morbi tristique senectus et netus et malesuada fames ac turpis egestas. Fusce felis eros, aliquam sed dui ut, tempor condimentum neque. Donec quis sapien bibendum, faucibus urna sed, gravida felis. Praesent et quam ligula. Aliquam ac est eu odio tincidunt volutpat a in augue. Maecenas fermentum velit felis, vel viverra dui scelerisque pharetra. Nullam eros lorem, finibus pulvinar eleifend eu, pulvinar ac ipsum. Sed velit neque, venenatis sit amet urna vitae, vulputate ullamcorper est.
+\noindent The finite element method is one of the most widely used techniques for solving partial differential equations in various industries. There are numerous open-source software packages available that implement the finite element method. However, advancements continue to be made, particularly with the emergence of new array computing libraries such as JAX and PyTorch, which feature automatic differentiation capabilities. Additionally, there is still significant potential for innovation in the user and application interfaces of finite element software to make them more accessible for researchers. \texttt{FastFEM} is an open-source finite element software designed to provide a clean and easy-to-use Python interface while opening the possibility to leverage JAX (in a future version) for computations with its automatic differentiation features. This report presents the capabilities of \texttt{FastFEM v0.0.1}, including its mesher, solver, and plotter, along with example code snippets. The underlying theory of the finite element method is summarized, and the implementation within \texttt{FastFEM} is briefly discussed. Furthermore, the strategies employed and tools utilized to maintain high software quality are explained. Finally, conclusions are drawn, and an outlook for the future of \texttt{FastFEM} is provided.
 \end{abstract}
 
 \section{Introduction}
 
-Seda luctus nisl vel sodales laoreet. Cras at dui ut lorem pulvinar lobortis sit amet sed augue. Curabitur in mi sed ex pharetra pharetra. Nunc nec luctus turpis. Cras blandit lacinia magna, vel gravida risus porta at. Etiam consequat fringilla lectus finibus imperdiet. Etiam in metus neque. Cras erat justo, scelerisque eu fermentum vitae, vestibulum sit amet ex. Phasellus ac leo non quam cursus suscipit ac a augue \cite{Serway2014}.
+Partial differential equations (PDEs) are the fundamental tools for mathematically modeling natural phenomena. Many fundamental phenomena observed in nature, such as general relativity\supercite{Marolf2001}, quantum mechanics \supercite{Feit1982}, heat diffusion\supercite{Bergman2011}, fluid mechanics\supercite{Lukaszewicz2016}, pricing of financial derivative contracts\supercite{Barles1998}, structural analysis\supercite{Boresi2002}, and electromagnetism\supercite{Griffiths2017}, are described by PDEs. However, most of these PDEs do not have closed-form solutions, especially in complex geometries. Therefore, engineers have developed many numerical methods for solving PDEs. One of the most popular numerical methods among them is the finite-element method (FEM), which originated in the early 1940s\supercite{Liu2022}. FEM is capable of solving non-linear PDEs in highly complex geometries. Since the 1940s, FEM has undergone significant advancements and has revolutionized the way scientific modeling and engineering design. Today, it is widely used in many industrial applications.
 
-Ut elementum et nisi vitae rutrum. Sed laoreet vestibulum felis non vehicula. Praesent efficitur ipsum vel tortor tincidunt, sed aliquam felis vulputate. Aliquam sed cursus sem, ut tempus enim. Fusce fermentum imperdiet elit, id pellentesque magna posuere quis. Suspendisse id posuere orci. Quisque lacinia viverra metus, nec volutpat nunc consequat sit amet. Donec mollis nec diam vitae sagittis. Proin viverra, tellus id rhoncus pulvinar, erat metus faucibus augue, eleifend consectetur lorem risus ut metus. Morbi lobortis metus ex, at ornare ipsum porta vel. Aliquam ultricies ipsum sapien, quis scelerisque orci pharetra nec. Phasellus faucibus mi id molestie lobortis. Duis aliquam eleifend libero, at congue nunc ultrices vulputate.
+There are many open-source FEM software options available today\supercite{fem_getdp, fem_agros, fem_calculix, fem_elmerfem, fem_freefem, fem_goma, fem_fenicsx, fem_dealii}. However, we think there is significant potential for innovation, particularly in user and application interfaces. \texttt{FastFEM}\supercite{fastfem} is developed with the goal of
 
-Aliquam erat volutpat. Vestibulum vitae orci in tortor fermentum varius. Nunc congue ligula eu lectus auctor placerat. Maecenas sodales nisi eget nisl facilisis congue. Maecenas lacinia ex ut eleifend semper. Aliquam nibh est, laoreet a interdum tincidunt, sodales sit amet nulla. Etiam at aliquam ligula. Nam scelerisque, ante nec sollicitudin aliquam, mi est vulputate sapien, et ultrices mi justo convallis libero. Vestibulum sed aliquam urna. Sed hendrerit sed augue vel sagittis. Duis tellus ipsum, varius vel dui eget, tempus consectetur est. Nunc quis mauris venenatis, condimentum sem eu, aliquam nisl. Quisque sapien lectus, maximus at urna in, placerat sagittis erat.
+\begin{itemize}
+    \item Creating an easy-to-use and clean Python interface to make FEM more accessible to researchers
+    \item Using modern tools like JAX\supercite{jax2018github} for advanced array computing with automatic differentiation capabilities
+\end{itemize}
 
-Nam aliquet, felis a vestibulum finibus, purus lacus convallis nibh, sed dapibus est nulla id odio. Nam venenatis tempor augue quis eleifend. Vestibulum porta lacinia ante quis semper. Quisque nunc ex, commodo nec ante ut, ornare lacinia eros. Mauris facilisis nisi quis mollis semper. Morbi at nisl facilisis, hendrerit augue sed, egestas urna. Vivamus et nibh eu eros eleifend dictum. Duis porttitor augue enim, ut aliquam ligula eleifend id. Sed mattis libero non neque ultrices, sit amet imperdiet ante pulvinar. Vestibulum euismod eget neque id ultrices. Aenean interdum mauris vitae est imperdiet, scelerisque viverra lorem condimentum.
+One of the motivations for creating a Python interface was the capability of the language to create very intuitive-to-use interfaces. A modern Python interface can offer users a great way of describing FEM problems. The other motivation was leveraging the existing scientific Python environment. Python's popularity in the scientific world is still increasing, and modern libraries with state-of-the-art technologies like JAX, PyVista\supercite{Sullivan2019}, etc., are being developed.
 
-\section{Theory}
+
+FastFEM is planned to be a big project, but as the goal of \texttt{v0.0.1}, we decided to focus on 2D parabolic PDEs. Parabolic PDEs, such as the heat diffusion equation, Poisson's equation, and the Black-Scholes equation, are very common in various applications. A 2-dimensional parabolic PDE can be expressed as
+
+\begin{equation}
+    \frac{\partial^2 f(x,y,t)}{\partial x^2} + \frac{\partial^2 f(x,y,t)}{\partial y^2}
+    =
+    h(f) \frac{\partial f(x,y,t)}{\partial t} + g(x,y)
+    \label{pde}
+\end{equation}
+where $f(x,y,t)$, $h(f)$, and $g(x,y)$ are scalar functions, $x$ and $y$ are spatial coordinates, and $t$ is time.
+
+Currently, \texttt{FastFEM v0.0.1} can
+\begin{enumerate}
+    \item create a 2D mesh,
+    \item take initial conditions, $h(f)$, and $g(x,y)$ as inputs,
+    \item solve \autoref{pde} with FEM, and
+    \item plot the solution.
+\end{enumerate}
+
+
+In this report, the theory behind FEM is summarized. The features and capabilities of \texttt{FastFEM v0.0.1} are presented. Some example results are shown. Finally, the conclusion and outlook are discussed.
+
+\section{Theory} \label{sec:theory}
+\input{theory}
 
 \section{Features and Capabilities}
 
-\subsection{Mesher}
+This section summarizes \texttt{FastFEM v0.0.1}'s features and capabilities: mesh generation, solving parabolic PDEs with FEM using elements and fields, and plotting.
 
-\subsection{Elements and Fields}
+\subsection{Mesher} \label{sec:mesher}
+\input{mesher}
+
+\subsection{Elements and Fields}\label{sec:elem_field}
+\input{elements_and_fields.tex}
 
 \subsection{Plotter}
+\input{plotter.tex}
 
-\section{Results}
+\section{Software Quality and Maintenance}
 
-\section{Conclusion}
+\texttt{FastFEM} is open-source and version-controlled on GitHub\supercite{fastfem}. We are following some rules to ensure high software quality for better maintainability:
 
+\begin{itemize}
+    \item Direct pushes to the "main" branch are not allowed. All the contributions should be made as a pull request.
+    \item Each pull request should be reviewed by two developers, and all the automated tests should be passed before it is merged.
+    \item All the documentation and reports related to the software are maintained in the same repository.
+    \item All the important discussions are conducted on the issues page.
+    \item The changelog is kept.
+    \item Semantic Versioning 2.0.0\supercite{semanticVersioning} convention is followed for versioning.
+\end{itemize}
+
+\texttt{FastFEM} also uses many other open-source tools for various reasons:
+\begin{itemize}
+    \item Hatch\supercite{hatch} is used as a project manager.
+    \item MkDocs\supercite{mkdocs} with Material theme\supercite{mkdocsmaterial} is used for the documentation.
+    \item MkDocstrings\supercite{mkdocstrings} is used to generate API references.
+    \item pytest\supercite{pytest} is used to write automated tests.
+    \item GitHub Actions\supercite{githubactions} is used to run the automated tests after each update.
+    \item pre-commit\supercite{precommit}, Ruff\supercite{ruff}, and Black\supercite{black} are used for linting and formatting.
+    \item pre-commit.ci is used to run the linters and formatters after each update.
+\end{itemize}
+
+\section{Conclusion and Outlook}
+
+In conclusion, the current version of \texttt{FastFem} is capable of discretizing any PDE into a system of linear equations using the mathematical formalism shown in sections \ref{sec:theory} and \ref{sec:elem_field}, and therefore provide an approximate solution to the PDE given a finite time step, which may be chosen freely by the user at their convenience (and their relative need for accuracy). Coupled with such calculations, \texttt{FastFem} also provides a mesh generator using \texttt{Gmsh} specified by the domain of the PDE as well as the number of elements required by the user (to be used in conjuction with the elements portion of the code), in addition to a plotter which uses \texttt{PyVista} to visualize all results in a 2D space, on the corresponding mesh.
+
+Currently, the full capabilities of \texttt{FastFem} are limited to 2D PDEs discretized using triangular elements, which may or may not include time dependency. In the future, we aim to extend \texttt{FastFem} to be fully compatible with 3D PDEs and quadrangle elements, as well as introduce the ability to introduce more complex boundary conditions defined by the user. In addition, current plotting methods should enable the user to export their results as a .mp4 or .gif files, but relies on external dependecies that are not necessarily pip-installable, and may therefore not be able to be used by all. In future versions, we aim to make this infrastructure more robust.
+
+\clearpage
 \printbibliography
 
 \end{document}
