@@ -3,7 +3,7 @@ In order to use the weak formulation, \texttt{FastFEM} needs to know how to inte
 \begin{itemize}
 \item For linear triangular elements with shape functions $\{\phi_1,\phi_2,\phi_3\}$ having the Kronecker delta property for each vertex ($\phi_i(v_j) = \delta_{ij}$ for vertices $v_1,v_2,v_3$), the analytical solution to the integral is known, since the shape functions are linear.
 
-\item Spectral elements (cit) have shape functions $\phi_{i_1,i_2}(F(x,y)) = L_{i_1}(x)L_{i_2}(y)$ for Lagrange interpolation polynomials $L_i$ based on GLL (Gauss-Lobatto-Legendre) quadrature, where $F$ denotes the coordinate transform from a reference space $[-1,1]^2$ to the element in the mesh's space. Integration is done using GLL quadrature in order to produce a diagonal mass matrix, so the integral is computed
+\item Spectral elements, a technique used in fluid dynamics (Patera 1984)\supercite{Patera1984} and other continuum mechanical fields, have shape functions $\phi_{i_1,i_2}(F(x,y)) = L_{i_1}(x)L_{i_2}(y)$ for Lagrange interpolation polynomials $L_i$ based on GLL (Gauss-Lobatto-Legendre) quadrature\supercite{Quarteroni2007}, where $F$ denotes the coordinate transform from a reference space $[-1,1]^2$ to the element in the mesh's space. Integration is done using GLL quadrature in order to produce a diagonal mass matrix, so the integral is computed
 \begin{equation}
 \begin{aligned}
     \int_{\Omega_{SE}} \phi_{i_1,i_2}\phi_{j_1,j_2} ~dV = \int_{\Omega_{SE}} L_{i_1}(x)L_{i_2}(y)L_{j_1}(x)L_{j_2}(y) ~dV \\
@@ -56,7 +56,9 @@ element.integrate_grad_basis_dot_grad_field(position_field, field, indices, jaco
 \label{eqn:element_integrate_grad_basis_dot_grad_field}
 \end{equation}
 
-Indices specify which basis functions should be computed. This is helpful for spectral elements, where only diagonal basis entries are needed. These functions implement integration against a field instead of two shape functions. This is because it may be computationally efficient to compute the contracted values $(I_{ij}u^j)_i$ instead of computing the matrix first, then contracting. For example, the stiffness matrix entries (\ref{eqn:stiffness_matrix}) are never used directly for the heat equation (\ref{pde}), but instead are used in contraction with the heat field $f$. This contraction is to produce the integral (\ref{eqn:element_integrate_grad_basis_dot_grad_field}), which can just be called by itself. If uncontracted matrix entries are desired, one can easily integrate each basis function individually.
+\verb+indices+ specify which basis functions should be computed. This is helpful for spectral elements, where only diagonal basis entries are needed. These functions implement integration against a field instead of two shape functions. This is because it may be computationally efficient to compute the contracted values $(I_{ij}u^j)_i$ instead of computing the matrix first, then contracting. For example, the stiffness matrix entries (\ref{eqn:stiffness_matrix}) are never used directly for the heat equation (\ref{pde}), but instead are used in contraction with the heat field $f$. This contraction is to produce the integral (\ref{eqn:element_integrate_grad_basis_dot_grad_field}), which can just be called by itself. If uncontracted matrix entries are desired, one can easily integrate each basis function individually. As of writing boundary integrals have not yet been implemented, so only homogeneous boundary conditions can be solved for (Dirichlet or Neumann).
+
+In addition, a \verb+mass_matrix+ method is implemented to provide a one-line code to obtain the mass matrix (\ref{eqn:mass_matrix}). These methods, along with the mesh element (\ref{sec:elem_field:mesh_element}), provide the backbone to solving the weak form of various PDEs, like in \autoref{fig:example-wave-timeloop}.
 
 \subsubsection{Fields} \label{sec:elem_field:fields}
 
@@ -98,3 +100,12 @@ Integrating a field on the mesh element is done as follows:
 \item Call the corresponding sub-element's integration function. Let $I_k$ denote the result on sub-element $k$.
 \item Perform an atomic addition. In the case of \verb+element.integrate_field+, this is just an addition reduction. For basis integrals $I_k(\tilde\phi_j)$, the coefficient to $\phi_{i_j}$ is accumulated.
 \end{enumerate}
+
+\pythonCodeBlock{figures/example_wave_timeloop.py}{A snippet of the wave equation demo code, whose output can be found in \autoref{fig:wave-eqn-frame}. The full code is found in \texttt{examples/demo\_wave\_equation.py}. The two integrals used here are the mass matrix terms and the stiffness matrix terms, which are computed using the corresponding functions, detailed in (\ref{sec:elem_field:elements}).}{fig:example-wave-timeloop}
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.5\textwidth]{figures/wave_eqn_outframe.png}
+    \caption{Output of (\texttt{examples/demo\_wave\_equation.py}). A single frame of the wave equation demo code. The relevant solving code is provided in \autoref{fig:example-wave-timeloop}.}
+    \label{fig:wave-eqn-frame}
+\end{figure}
