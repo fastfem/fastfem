@@ -75,17 +75,19 @@
 \maketitle
 
 \begin{abstract}
-\noindent Lorem ipsum dolor sit amet, consectetur adipiscing elit. Vestibulum congue gravida sem non dictum. Aenean sit amet mi fermentum ante laoreet dictum sit amet a magna. Praesent sed aliquet dui. Vivamus scelerisque condimentum mauris id euismod. Duis elementum urna eu rutrum mattis. Donec fermentum, risus et viverra aliquet, ante sapien consequat augue, sit amet dictum est nisl id elit. Proin dapibus congue tincidunt. Pellentesque habitant morbi tristique senectus et netus et malesuada fames ac turpis egestas. Fusce felis eros, aliquam sed dui ut, tempor condimentum neque. Donec quis sapien bibendum, faucibus urna sed, gravida felis. Praesent et quam ligula. Aliquam ac est eu odio tincidunt volutpat a in augue. Maecenas fermentum velit felis, vel viverra dui scelerisque pharetra. Nullam eros lorem, finibus pulvinar eleifend eu, pulvinar ac ipsum. Sed velit neque, venenatis sit amet urna vitae, vulputate ullamcorper est.
+\noindent The finite element method is one of the most widely used techniques for solving partial differential equations in various industries. There are numerous open-source software packages available that implement the finite element method. However, advancements continue to be made, particularly with the emergence of new array computing libraries such as JAX and PyTorch, which feature automatic differentiation capabilities. Additionally, there is still significant potential for innovation in the user and application interfaces of finite element software to make them more accessible for researchers.\texttt{FastFEM}is an open-source finite element software designed to provide a clean and easy-to-use Python interface while leveraging JAX for computations with its automatic differentiation features. This report presents the capabilities of\texttt{FastFEM}v0.0.1, including its mesher, solver, and plotter, along with example code snippets. The underlying theory of the finite element method is summarized, and the implementation within\texttt{FastFEM}is briefly discussed. Furthermore, the strategies employed and tools utilized to maintain high software quality are explained. Finally, conclusions are drawn, and an outlook for the future of\texttt{FastFEM}is provided.
 \end{abstract}
 
 \section{Introduction}
 
 Partial differential equations (PDEs) are the fundamental tools for mathematically modeling natural phenomena. Many fundamental phenomena observed in nature, such as general relativity\supercite{Marolf2001}, quantum mechanics \supercite{Feit1982}, heat diffusion\supercite{Bergman2011}, fluid mechanics\supercite{Lukaszewicz2016}, pricing of financial derivative contracts\supercite{Barles1998}, structural analysis\supercite{Boresi2002}, and electromagnetism\supercite{Griffiths2017}, are described by PDEs. However, most of these PDEs do not have closed-form solutions, especially in complex geometries. Therefore, engineers have developed many numerical methods for solving PDEs. One of the most popular numerical methods among them is the finite-element method (FEM), which originated in the early 1940s\supercite{Liu2022}. FEM is capable of solving non-linear PDEs in highly complex geometries. Since the 1940s, FEM has undergone significant advancements and has revolutionized the way scientific modeling and engineering design. Today, it is widely used in many industrial applications.
 
-Currently, there are many open-source FEM software out there\supercite{fem_getdp, fem_agros, fem_calculix, fem_elmerfem, fem_freefem, fem_goma, fem_fenicsx, fem_dealii}. With \texttt{FastFEM}\supercite{fastfem}, we attempt to develop another open-source FEM software package with the goal of
+Currently, there are many open-source FEM software out there. With , we attempt to develop another open-source FEM software package with the goal of
+
+There are many open-source FEM software options available today\supercite{fem_getdp, fem_agros, fem_calculix, fem_elmerfem, fem_freefem, fem_goma, fem_fenicsx, fem_dealii}. However, we think there is significant potential for innovation, particularly in user and application interfaces. \texttt{FastFEM}\supercite{fastfem} is developed with the goal of
 
 \begin{itemize}
-    \item Creating an easy-to-use and clean Python interface
+    \item Creating an easy-to-use and clean Python interface to make FEM more accessible to researchers
     \item Using modern tools like JAX\supercite{jax2018github} for advanced array computing with automatic differentiation capabilities
 \end{itemize}
 
@@ -114,119 +116,20 @@ Currently, \texttt{FastFEM v0.0.1} can
 In this report, the theory behind FEM is summarized. The features and capabilities of \texttt{FastFEM v0.0.1} are presented. Some example results are shown. Finally, the conclusion and outlook are discussed.
 
 \section{Theory}
-We hereby present an overview of the mathematical formalism behind the finite element method. Let there be a parabolic partial differential equation of the form:
-
-\begin{equation}
-\frac{\partial^2 f}{\partial x^2} + \frac{\partial^2 f}{\partial y^2} = k(f) \frac{\partial f}{\partial t} + g(x,y)
-\end{equation}
-
-Where $f$ represents the function of interest (which may be interpreted as temperature in a heat conduction problem, for example), $k(f)$ is some function of $f$ and $g(x,y)$ is some spatial source/sink term. In a more compact form, this may be written as:
-
-\begin{equation}
-\nabla^2 f  = k\frac{\partial f}{\partial t} + g(x,y) \label{eqn:condensed-PDE}
-\end{equation}
-
-And may further be formulated in its weak form, where equation \ref{eqn:condensed-PDE} is multiplied by some test function $v$ in a Sobolev space $H_0^1$, i.e. smoothly differential once.
-
-\begin{equation}
-\int_\Omega \nabla^2 f v dV = \int_\Omega k \frac{\partial f}{\partial t}v dV + \int_\Omega gv dV \label{eqn:PDE-weakform}
-\end{equation}
-
-For some domain of interest $\Omega$, effectively determined by the initial and boundary conditions of the problem. Integrating equation \ref{eqn:PDE-weakform} by parts and applying Dirichlet BC's for the test function $v$, we arrive at the following form.
-
-\begin{equation}
-- \int_\Omega \mathbf{\nabla f} \cdot \mathbf{\nabla v} dV = \int_\Omega k \frac{df}{dt} v + \int_\Omega gv dV
-\end{equation}
-
-where each quantity may be represented as a sum:
-
-\begin{align}
-f = \sum_i^n f_i \phi_i(x,y) \nonumber \\
-\dot{f} =  \sum_i^n f'_i \phi_i(x,y) \nonumber \\
-g = \sum_i^n g_i \phi_i(x,y) \nonumber \\
-v = \sum_i^n v_i \phi_i(x,y) \nonumber
-\end{align}
-
-For some shape functions $\phi_i(x,y)$, which constitute an appropriate choice of basis for the original PDE.
-
-Then, the weak formulation is further simplified:
-
-\begin{align}
-    - \sum_i \sum_j \int_\Omega \nabla(f_i \phi_i) \cdot \nabla(v_j \phi_j) dV = \sum_i \sum_j \int_\Omega k (f'_i \phi_i) (v_j \phi_j) + \sum_i \sum_j \int_\Omega (g_i \phi_i) (v_j \phi_j) dV \\
-    - \sum_i \sum_j f_i v_j \int_\Omega (\nabla \phi_i) \cdot (\nabla \phi_j) dV = \sum_i \sum_j k f'_i v_j \int_\Omega  \phi_i \phi_j+ \sum_i \sum_j g_i v_j \int_\Omega \phi_i \phi_j dV \label{eqn:expanded_basis}
-\end{align}
-
-Where equation \ref{eqn:expanded_basis} may be expressed in matrix form as:
-
-\begin{equation}
-K \mathbf{f} = M \mathbf{g} \label{eqn:matrix_form}
-\end{equation}
-
-Where $K$ is the stiffness matrix, $M$ is the mass matrix, and are expressed as:
-
-\begin{equation}
-    M(\phi_i,\phi_j) = \int_{\Omega}\phi_i \phi_j~dV
-    \label{eqn:mass_matrix}
-\end{equation}
-
-\begin{equation}
-    K(\phi_i,\phi_j) = \int_{\Omega}(\nabla\phi_i)\cdot (\nabla\phi_j)~dV
-    \label{eqn:stiffness_matrix}
-\end{equation}
-
-Then, equation \ref{eqn:matrix_form} is a linear system of equations, and may be solved using any scheme appropriate scheme.
+\input{theory}
 
 \section{Features and Capabilities}
 
 This section summarizes \texttt{FastFEM v0.0.1}'s features and capabilities: mesh generation, solving parabolic PDEs with FEM using elements and fields, and plotting.
 
 \subsection{Mesher} \label{sec:mesher}
-
-\texttt{FastFEM} uses Gmsh\supercite{Gmsh} for mesh generation. Currently, \texttt{v0.0.1} offers two fundamental 2D mesh generation functions, as shown in \autoref{fig:mesh-example1}.  The results of the functions are shown in \autoref{fig:mesh}. \texttt{FastFEM} is fully statically typed so that users can get autocomplete suggestions when writing the function's arguments and using the mesh object it returns.
-
-\pythonCodeBlock{figures/mesher-example1.py}{Two available functions of \texttt{FastFEM v0.0.1} for generating 2D square and rectangle meshes that are shown in \autoref{fig:mesh}.}{fig:mesh-example1}
-
-\begin{figure}[H]
-    \centering
-    \hfill
-    \begin{subfigure}[c]{0.4\textwidth}
-        \centering
-        \includegraphics[width=\textwidth]{figures/square_mesh.png}
-
-        \caption{Square mesh.}
-        \label{fig:square}
-    \end{subfigure}s
-    \hspace{0.1\textwidth}
-    \begin{subfigure}[c]{0.4\textwidth}
-        \centering
-        \includegraphics[width=\textwidth]{figures/rectangle_mesh.png}
-        \caption{Rectangle mesh.}
-        \label{fig:rectangle}
-    \end{subfigure}
-    \caption{Two examples of mesh generated with the functions in \autoref{fig:mesh-example1}.}
-    \label{fig:mesh}
-    \hfill
-\end{figure}
-
-\texttt{FastFEM v0.0.1} also provides a general-purpose, object-oriented interface for 2D mesh generation by abstracting Gmsh's functional approach. For example, a mesh of an arbitrary 2D geometry, as shown in \autoref{fig:arbitrarymesh}, can be created using the code presented in \autoref{fig:mesh-example2}.
-
-\pythonCodeBlock{figures/mesher-example2.py}{The code that generates the mesh of an arbitrary geometry shown in \autoref{fig:arbitrarymesh}.}{fig:mesh-example2}
-
-\begin{figure}[H]
-    \centering
-    \includegraphics[width=0.5\textwidth]{figures/arbitrary_mesh.png}
-    \caption{An arbitrary 2D mesh generated using the code in \autoref{fig:mesh-example2}.}
-    \label{fig:arbitrarymesh}
-\end{figure}
+\input{mesher}
 
 \subsection{Elements and Fields}\label{sec:elem_field}
 \input{elements_and_fields.tex}
+
 \subsection{Plotter}
 \input{plotter.tex}
-
-
-
-\section{Results}
 
 \section{Software Quality and Maintenance}
 
@@ -251,7 +154,6 @@ This section summarizes \texttt{FastFEM v0.0.1}'s features and capabilities: mes
     \item pre-commit\supercite{precommit}, Ruff\supercite{ruff}, and Black\supercite{black} are used for linting and formatting.
     \item pre-commit.ci is used to run the linters and formatters after each update.
 \end{itemize}
-
 
 \section{Conclusion and Outlook}
 
