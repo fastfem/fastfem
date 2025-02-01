@@ -16,7 +16,7 @@ path = "fastfem/__init__.py"
 [project]
 dependencies = [
     "jax==0.4.35",
-    "numpy==2.2.0",
+    "numpy==2.2.2",
     "matplotlib==3.9.3",
     "gmsh==4.13.1",
     "pyvista[all]==0.44.2",
