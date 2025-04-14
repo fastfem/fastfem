@@ -823,7 +823,7 @@ class Field:
         ):
             message = (
                 f"Cannot broadcast field of shape {self.shape} into"
-                f" shape {(stack_shape,basis_shape,point_shape)}"
+                f" shape {(stack_shape, basis_shape, point_shape)}"
             )
             raise FieldShapeError(message)
         slices: list[typing.Any] = [None, None, None]
@@ -1033,7 +1033,7 @@ class Field:
         if ind < 0:
             if out_of_bounds_check and ind < -len(shape):
                 message = (
-                    f"Attempting to access axis {ind} ({-1-ind}) of shape {shape}."
+                    f"Attempting to access axis {ind} ({-1 - ind}) of shape {shape}."
                 )
                 raise IndexError(message)
             ind = len(shape) + ind
