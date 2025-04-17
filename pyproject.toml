@@ -1,5 +1,5 @@
 [build-system]
-requires = ["hatchling==1.26.3"]
+requires = ["hatchling==1.27.0"]
 build-backend = "hatchling.build"
 
 [tool.hatch.build.targets.sdist]
@@ -17,7 +17,7 @@ path = "fastfem/__init__.py"
 dependencies = [
     "jax==0.5.3",
     "numpy==2.2.4",
-    "matplotlib==3.9.3",
+    "matplotlib==3.10.1",
     "gmsh==4.13.1",
     "pyvista[all]==0.44.2",
 ]
