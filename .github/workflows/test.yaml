@@ -33,7 +33,7 @@ jobs:
         name: Install libglu1-mesa for Gmsh
         run: sudo apt install libglu1-mesa
 
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
 
       - name: Install Hatch
         uses: pypa/hatch@install
@@ -57,7 +57,7 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
 
       - name: Download coverage files
         uses: actions/download-artifact@v4
