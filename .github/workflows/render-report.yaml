@@ -25,7 +25,7 @@ jobs:
           runCmd: cd report && latexmk -halt-on-error -lualatex main.tex
 
       - name: Upload PDF artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v5
         with:
           name: PDF
           path: report/main.pdf
